@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pacientes IMO">
+<title>Pacientes IMO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--blue:#007aff;--green:#34c759;--red:#ff3b30;--amber:#ff9500;--purple:#af52de;--gray:#8e8e93;--bg:#f2f2f7;--card:#fff;--border:#e5e5ea;--text:#1c1c1e}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.topbar h1{font-size:18px;font-weight:700}
+.sync{font-size:11px;color:var(--gray);display:flex;align-items:center;gap:4px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}.sync-dot.off{background:var(--red)}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--border);display:flex;z-index:200;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 2px 6px;border:none;background:none;cursor:pointer;color:var(--gray);font-size:9px;gap:2px}
+.nav-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav-btn.active{color:var(--blue)}
+.content{padding:14px 14px 90px}
+.section{display:none}.section.active{display:block}
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto}
+.modal-box h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--gray);margin-bottom:16px}
+.modal-close{float:right;background:var(--bg);border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:var(--gray)}
+/* CARDS */
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;border-left:4px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card.warn{border-left-color:var(--amber)}.card.danger{border-left-color:var(--red)}.card.extra{border-left-color:#ff6b35}
+.card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.avatar{width:40px;height:40px;border-radius:50%;background:#e1f0ff;color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.cname{font-size:15px;font-weight:600}.csub{font-size:12px;color:var(--gray);margin-top:1px}
+.cbadges{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto;flex-shrink:0}
+.badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600}
+.badge.green{background:#d4f5e2;color:#1a7a3e}.badge.amber{background:#fff3d4;color:#b8600a}
+.badge.red{background:#ffd4d4;color:#a00}.badge.blue{background:#ddeeff;color:#005fb8}
+.badge.purple{background:#ecdeff;color:#5b00b8}.badge.gray{background:#f0f0f5;color:#636366}
+.card-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px}
+.il{color:var(--gray);margin-bottom:1px}.iv{color:var(--text);font-weight:600}
+.dots{display:flex;gap:3px;flex-wrap:wrap;flex:1}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--bg);border:1.5px solid var(--border)}
+.dot.used{background:var(--blue);border-color:var(--blue)}.dot.extra{background:var(--red);border-color:var(--red)}
+.btn-sm{padding:6px 11px;border-radius:9px;border:none;font-size:12px;font-weight:500;cursor:pointer}
+.btn-add{background:var(--blue);color:#fff}.btn-del{background:#fff0f0;color:var(--red);border:1px solid #ffd4d4}.btn-undo{background:#f0f0f5;color:var(--gray)}
+.alert-msg{font-size:12px;padding:6px 10px;border-radius:8px;margin-top:8px}
+.alert-msg.amber{background:#fff3d4;color:#b8600a}.alert-msg.red{background:#ffd4d4;color:#a00}.alert-msg.coral{background:#ffe8e0;color:#a03000}
+/* METRICS */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.metric{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.metric-label{font-size:11px;color:var(--gray);margin-bottom:2px}.metric-val{font-size:22px;font-weight:700}
+.metric-val.red{color:var(--red)}.metric-val.green{color:var(--green)}.metric-val.blue{color:var(--blue)}.metric-val.purple{color:var(--purple)}
+.metrics4{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+/* FILTERS */
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.fbtn{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;font-size:13px;color:var(--gray);cursor:pointer}
+.fbtn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.search-box{background:#fff;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;border:1px solid var(--border)}
+.search-box input{border:none;outline:none;font-size:15px;flex:1;background:none;color:var(--text)}
+/* FORM */
+.form-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.form-card h3{font-size:13px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.field{margin-bottom:12px}
+.field label{font-size:13px;color:var(--gray);display:block;margin-bottom:4px;font-weight:500}
+.field input,.field select{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:11px;font-size:15px;background:#fff;color:var(--text);-webkit-appearance:none}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue)}
+.field input[readonly]{background:var(--bg);color:var(--gray)}
+.plan-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:4px}
+.plan-card{border:2px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s}
+.plan-card.selected{border-color:var(--blue);background:#f0f7ff}
+.plan-card-name{font-size:14px;font-weight:700}.plan-card-desc{font-size:12px;color:var(--gray);margin-top:2px}
+.plan-card-price{font-size:13px;font-weight:700;color:var(--green);margin-top:4px}
+.btn-primary{width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:13px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.btn-secondary{width:100%;padding:12px;background:var(--bg);color:var(--text);border:none;border-radius:13px;font-size:15px;cursor:pointer}
+.form-msg{font-size:13px;text-align:center;margin-top:8px}
+/* CHARTS */
+.chart-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.chart-card h3{font-size:14px;font-weight:700;margin-bottom:12px}
+.chart-wrap{position:relative;height:200px}
+/* HISTORY */
+.hist-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.hist-item:last-child{border-bottom:none}
+.hist-dot{width:10px;height:10px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:3px}
+.hist-dot.renew{background:var(--green)}.hist-dot.change{background:var(--amber)}
+.hist-title{font-size:13px;font-weight:600}.hist-date{font-size:11px;color:var(--gray);margin-top:2px}
+.hist-plan-tag{font-size:11px;background:#ddeeff;color:#005fb8;padding:2px 7px;border-radius:8px;display:inline-block;margin-top:3px}
+/* NOTIF */
+.notif-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:center;justify-content:center;padding:20px}
+.notif-overlay.open{display:flex}
+.notif-box{background:#fff;border-radius:20px;padding:20px;width:100%;max-width:380px;max-height:80vh;overflow-y:auto}
+.notif-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.notif-icon{font-size:28px}.notif-title{font-size:17px;font-weight:700}.notif-subtitle{font-size:13px;color:var(--gray);margin-top:1px}
+.notif-patient{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.notif-patient:last-child{border-bottom:none}
+.notif-pname{font-size:14px;font-weight:600}.notif-pinfo{font-size:12px;color:var(--gray)}
+.notif-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px}
+.renewal-tag{font-size:10px;background:#d4f5e2;color:#1a7a3e;padding:2px 7px;border-radius:8px;font-weight:600}
+.empty{text-align:center;padding:3rem 1rem;color:var(--gray);font-size:14px}
+.loader{text-align:center;padding:2rem;color:var(--gray);font-size:14px}
+.alpha-label{font-size:12px;font-weight:700;color:var(--blue);padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:6px}
+/* EDIT */
+.edit-profile{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.edit-avatar{width:52px;height:52px;border-radius:50%;background:#e1f0ff;color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+/* CALENDAR */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:14px;padding:12px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.cal-nav button{border:none;background:var(--bg);border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:var(--text)}
+.cal-month{font-size:16px;font-weight:700}
+.cal-grid{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:12px}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+.cal-wd{text-align:center;font-size:11px;font-weight:600;color:var(--gray);padding:4px 0}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-size:13px;font-weight:500;position:relative;cursor:default}
+.cal-day.other{color:#c7c7cc}
+.cal-day.today{background:#e1f0ff;color:var(--blue);font-weight:700}
+.cal-day.has-end{cursor:pointer;font-weight:700}
+.cal-day.end-active{background:#fff3d4;color:#b8600a}
+.cal-day.end-warn{background:#ffd4d4;color:#a00}
+.cal-day.end-ok{background:#d4f5e2;color:#1a7a3e}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:currentColor;margin-top:1px}
+.cal-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--gray);margin-bottom:12px}
+.cal-legend-item{display:flex;align-items:center;gap:4px}
+.cal-legend-dot{width:10px;height:10px;border-radius:3px}
+/* FINANCE */
+.fin-period{display:flex;gap:8px;margin-bottom:14px}
+.fin-tab{flex:1;padding:9px;border-radius:12px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:center;color:var(--gray)}
+.fin-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.fin-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.fin-row:last-child{border-bottom:none}
+.fin-row-label{color:var(--gray)}
+.fin-row-val{font-weight:700}
+.progress-bar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:3px;background:var(--blue)}
+/* MODAL PATIENT LIST */
+.modal-patient-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.modal-patient-row:last-child{border-bottom:none}
+.modal-patient-row:active{opacity:.7}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>IMO Pacientes</h1>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="sync"><div class="sync-dot off" id="sync-dot"></div><span id="sync-status">Conectando...</span></div>
+    <button id="edit-mode-btn" onclick="toggleEditMode()" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--gray)">✏️ Editar</button>
+  </div>
+</div>
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="showTab('patients')" id="nav-patients">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Pacientes
+  </button>
+  <button class="nav-btn" onclick="showTab('calendar')" id="nav-calendar">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendário
+  </button>
+  <button class="nav-btn" onclick="showTab('finance')" id="nav-finance">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Financeiro
+  </button>
+  <button class="nav-btn" onclick="showTab('history')" id="nav-history">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico
+  </button>
+  <button class="nav-btn" onclick="showTab('edit')" id="nav-edit">
+    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Cadastros
+  </button>
+  <button class="nav-btn" onclick="showTab('add')" id="nav-add">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo
+  </button>
+</nav>
+
+<div class="content">
+  <!-- PATIENTS -->
+  <div id="tab-patients" class="section active">
+    <div class="metrics" id="metrics"></div>
+    <div class="search-box"><span>🔍</span><input id="search-input" type="text" placeholder="Buscar paciente..." oninput="renderList()"></div>
+    <div class="filters">
+      <button class="fbtn active" onclick="setFilter('todos',this)">Todos</button>
+      <button class="fbtn" onclick="setFilter('encerrando',this)">Encerrando</button>
+      <button class="fbtn" onclick="setFilter('encerrado',this)">Encerrados</button>
+      <button class="fbtn" onclick="setFilter('consultas',this)">Cons. excedidas</button>
+    </div>
+    <div id="patient-list"><div class="loader">Carregando...</div></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="tab-calendar" class="section">
+    <div class="cal-nav">
+      <button onclick="calPrev()">‹</button>
+      <span class="cal-month" id="cal-title"></span>
+      <button onclick="calNext()">›</button>
+    </div>
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#d4f5e2"></div>Ativo (>30d)</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#fff3d4"></div>Encerrando (≤30d)</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#ffd4d4"></div>Encerrado</div>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-weekdays">
+        <div class="cal-wd">Dom</div><div class="cal-wd">Seg</div><div class="cal-wd">Ter</div>
+        <div class="cal-wd">Qua</div><div class="cal-wd">Qui</div><div class="cal-wd">Sex</div><div class="cal-wd">Sáb</div>
+      </div>
+      <div class="cal-days" id="cal-days"></div>
+    </div>
+    <div id="cal-month-list"></div>
+  </div>
+
+  <!-- FINANCE -->
+  <div id="tab-finance" class="section">
+    <div class="fin-period">
+      <button class="fin-tab active" onclick="setFinPeriod('month',this)">Este mês</button>
+      <button class="fin-tab" onclick="setFinPeriod('year',this)">Este ano</button>
+      <button class="fin-tab" onclick="setFinPeriod('all',this)">Total geral</button>
+    </div>
+    <div id="fin-content"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="tab-history" class="section">
+    <div class="search-box"><span>🔍</span><input id="hist-search" type="text" placeholder="Buscar paciente..." oninput="renderHistSearch()"></div>
+    <div id="hist-results"></div><div id="hist-detail"></div>
+  </div>
+
+  <!-- EDIT -->
+  <div id="tab-edit" class="section">
+    <div class="search-box"><span>🔍</span><input id="edit-search" type="text" placeholder="Buscar paciente para editar..." oninput="renderEditSearch()"></div>
+    <div id="edit-results"></div><div id="edit-detail"></div>
+  </div>
+
+  <!-- ADD -->
+  <div id="tab-add" class="section">
+    <div class="form-card">
+      <h3>Dados do paciente</h3>
+      <div class="field"><label>Nome completo</label><input id="f-name" type="text" placeholder="Nome completo"></div>
+      <div class="field"><label>Cidade</label><input id="f-city" type="text" placeholder="Cidade"></div>
+      <div class="field"><label>Data de nascimento</label><input id="f-birth" type="date"></div>
+      <div class="field"><label>E-mail</label><input id="f-email" type="email" placeholder="email@exemplo.com"></div>
+      <div class="field"><label>Contato</label><input id="f-phone" type="tel" placeholder="(61) 99999-9999"></div>
+    </div>
+    <div class="form-card">
+      <h3>Programa</h3>
+      <div class="plan-cards" id="plan-cards">
+        <div class="plan-card" onclick="selectPlan('intensivo',this,'new')">
+          <div class="plan-card-name">🏆 Programa Intensivo</div>
+          <div class="plan-card-desc">12 meses • Consultas ilimitadas</div>
+          <div class="plan-card-price">R$ 4.000,00</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan('completo',this,'new')">
+          <div class="plan-card-name">⭐ Programa Completo</div>
+          <div class="plan-card-desc">12 meses • 5 consultas inclusas</div>
+          <div class="plan-card-price">R$ 3.200,00</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan('basico',this,'new')">
+          <div class="plan-card-name">✅ Programa Básico</div>
+          <div class="plan-card-desc">6 meses • 2 consultas inclusas</div>
+          <div class="plan-card-price">R$ 2.100,00</div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Valor do contrato (R$)</label><input id="f-value" type="number" placeholder="Valor negociado"></div>
+      <div class="field"><label>Data de início</label><input id="f-start" type="date" oninput="calcEnd('f-start','f-end','new')"></div>
+      <div class="field"><label>Data de término</label><input id="f-end" type="text" readonly placeholder="—"></div>
+    </div>
+    <button class="btn-primary" onclick="addPatient()">Cadastrar paciente</button>
+    <button class="btn-secondary" onclick="clearForm()">Limpar</button>
+    <div class="form-msg" id="form-msg"></div>
+  </div>
+</div>
+
+<!-- RENEWAL MODAL -->
+<div class="modal" id="modal-renewal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-renewal')">✕</button>
+    <h2>Renovar Plano</h2>
+    <div class="plan-cards" id="renewal-plan-cards" style="margin-bottom:12px">
+      <div class="plan-card" onclick="selectPlan('intensivo',this,'renewal')"><div class="plan-card-name">🏆 Programa Intensivo</div><div class="plan-card-desc">12 meses • Ilimitado</div><div class="plan-card-price">R$ 4.000,00</div></div>
+      <div class="plan-card" onclick="selectPlan('completo',this,'renewal')"><div class="plan-card-name">⭐ Programa Completo</div><div class="plan-card-desc">12 meses • 5 consultas</div><div class="plan-card-price">R$ 3.200,00</div></div>
+      <div class="plan-card" onclick="selectPlan('basico',this,'renewal')"><div class="plan-card-name">✅ Programa Básico</div><div class="plan-card-desc">6 meses • 2 consultas</div><div class="plan-card-price">R$ 2.100,00</div></div>
+    </div>
+    <div class="field"><label>Valor da renovação (R$)</label><input id="renewal-value" type="number" placeholder="Valor negociado"></div>
+    <div id="renewal-summary" style="background:var(--bg);border-radius:10px;padding:12px;font-size:13px;color:var(--gray);margin-bottom:14px">Selecione um plano acima.</div>
+    <button class="btn-primary" onclick="confirmRenewal()">Confirmar Renovação</button>
+  </div>
+</div>
+
+<!-- CALENDAR DAY MODAL -->
+<div class="modal" id="modal-cal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-cal')">✕</button>
+    <h2 id="modal-cal-title"></h2>
+    <p class="modal-sub" id="modal-cal-sub"></p>
+    <div id="modal-cal-list"></div>
+  </div>
+</div>
+
+<!-- NOTIF -->
+<div class="notif-overlay" id="notif-overlay">
+  <div class="notif-box">
+    <div class="notif-header"><div class="notif-icon">🔔</div>
+      <div><div class="notif-title">Contratos encerrando este mês</div><div class="notif-subtitle" id="notif-month"></div></div>
+    </div>
+    <div id="notif-list"></div>
+    <button class="notif-btn" onclick="closeNotif()">Entendido</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:"AIzaSyC30hLOPmj04lZUQtdKEAt7OqQQioThcFs",
+  authDomain:"programas-imo.firebaseapp.com",
+  projectId:"programas-imo",
+  storageBucket:"programas-imo.firebasestorage.app",
+  messagingSenderId:"1033939993776",
+  appId:"1:1033939993776:web:242dbe8875706a9c196775"
+};
+const fbApp=initializeApp(firebaseConfig);
+const db=getFirestore(fbApp);
+const colRef=collection(db,"pacientes");
+
+let patients=[];
+let filterMode='todos';
+let selectedPlan={new:'',renewal:'',edit:''};
+let renewalPatientId=null;
+let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
+let finPeriod='month';
+let chartFat=null, chartNew=null, chartPlanFin=null;
+let PLAN_CONFIG={
+  intensivo:{label:'Programa Intensivo',emoji:'🏆',months:12,maxConsults:null,price:4000},
+  completo:{label:'Programa Completo',emoji:'⭐',months:12,maxConsults:5,price:3200},
+  basico:{label:'Programa Básico',emoji:'✅',months:6,maxConsults:2,price:1800}
+};
+let PLAN_PRICES={intensivo:4000,completo:3200,basico:1800};
+let editMode=false;
+
+onSnapshot(colRef,snap=>{
+  patients=snap.docs.map(d=>({id:d.id,...d.data()}));
+  document.getElementById('sync-dot').classList.remove('off');
+  document.getElementById('sync-status').textContent='Sincronizado';
+  renderList();renderMetrics();checkMonthlyNotif();
+},()=>{document.getElementById('sync-dot').classList.add('off');document.getElementById('sync-status').textContent='Erro';});
+
+// HELPERS
+const initials=n=>n.trim().split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+const getDaysLeft=ed=>Math.round((new Date(ed+'T12:00:00')-Object.assign(new Date(),{hours:0,minutes:0,seconds:0,ms:0}))/86400000);
+const planStatus=p=>{const d=getDaysLeft(p.endDate);return d<0?'encerrado':d<=30?'encerrando':'ativo';};
+const consultStatus=p=>{const max=PLAN_CONFIG[p.plan]?.maxConsults;if(max===null||max===undefined)return 'ok';return p.consults>max?'excedido':p.consults===max?'limite':'ok';};
+const planLabel=p=>PLAN_CONFIG[p]?.label||PLAN_CONFIG[p?.plan]?.label||p;
+const planColor=p=>p==='intensivo'?'purple':p==='completo'?'blue':'gray';
+const planMonths=p=>PLAN_CONFIG[p]?.months||(p==='basico'?6:12);
+const calcAge=b=>{if(!b)return null;const d=new Date(b),n=new Date();let a=n.getFullYear()-d.getFullYear();if(n<new Date(n.getFullYear(),d.getMonth(),d.getDate()))a--;return a;};
+const fmtDate=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+const padNum=n=>String(n).padStart(4,'0');
+const planMonths=p=>p==='basico'?6:12;
+const fmtMoney=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const MONTHS_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// TAB
+window.showTab=t=>{
+  ['patients','calendar','finance','history','edit','add'].forEach(id=>{
+    document.getElementById('tab-'+id).classList.toggle('active',id===t);
+    document.getElementById('nav-'+id).classList.toggle('active',id===t);
+  });
+  if(t==='calendar')renderCalendar();
+  if(t==='finance')renderFinance();
+  if(t==='history'){document.getElementById('hist-search').value='';document.getElementById('hist-results').innerHTML='';document.getElementById('hist-detail').innerHTML='';}
+  if(t==='edit'){document.getElementById('edit-search').value='';document.getElementById('edit-results').innerHTML='';document.getElementById('edit-detail').innerHTML='';}
+};
+window.setFilter=(f,el)=>{filterMode=f;document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderList();};
+
+// PLAN
+window.selectPlan=(plan,el,ctx)=>{
+  selectedPlan[ctx]=plan;
+  const cid=ctx==='renewal'?'renewal-plan-cards':ctx==='edit'?'edit-plan-cards':'plan-cards';
+  document.getElementById(cid).querySelectorAll('.plan-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  if(ctx==='new'){
+    document.getElementById('f-value').value=PLAN_PRICES[plan];
+    calcEnd('f-start','f-end','new');
+  }
+  if(ctx==='renewal'){
+    document.getElementById('renewal-value').value=PLAN_PRICES[plan];
+    updateRenewalSummary();
+  }
+  if(ctx==='edit') calcEnd('e-start','e-end','edit');
+};
+window.calcEnd=(sId,eId,ctx)=>{
+  const s=document.getElementById(sId).value;
+  const p=selectedPlan[ctx==='edit'?'edit':ctx==='renewal'?'renewal':'new'];
+  const ef=document.getElementById(eId);
+  if(!s||!p){ef.value='';return;}
+  const d=new Date(s+'T12:00:00');d.setMonth(d.getMonth()+planMonths(p));
+  ef.value=d.toLocaleDateString('pt-BR');
+};
+function updateRenewalSummary(){
+  const p=patients.find(x=>x.id===renewalPatientId);if(!p)return;
+  const plan=selectedPlan.renewal;
+  if(!plan){document.getElementById('renewal-summary').textContent='Selecione um plano acima.';return;}
+  const newEnd=new Date(p.endDate+'T12:00:00');newEnd.setMonth(newEnd.getMonth()+planMonths(plan));
+  document.getElementById('renewal-summary').innerHTML=`
+    <div style="margin-bottom:4px"><span style="color:var(--gray)">Paciente:</span> <strong>${p.name}</strong></div>
+    <div style="margin-bottom:4px"><span style="color:var(--gray)">Novo plano:</span> <strong>${planLabel(plan)}</strong></div>
+    <div style="margin-bottom:4px"><span style="color:var(--gray)">Término atual:</span> <strong>${fmtDate(p.endDate)}</strong></div>
+    <div><span style="color:var(--gray)">Novo término:</span> <strong>${newEnd.toLocaleDateString('pt-BR')}</strong></div>`;
+}
+
+// ADD
+window.addPatient=async()=>{
+  const name=document.getElementById('f-name').value.trim();
+  const city=document.getElementById('f-city').value.trim();
+  const birth=document.getElementById('f-birth').value;
+  const email=document.getElementById('f-email').value.trim();
+  const phone=document.getElementById('f-phone').value.trim();
+  const start=document.getElementById('f-start').value;
+  const plan=selectedPlan.new;
+  const value=parseFloat(document.getElementById('f-value').value)||PLAN_PRICES[plan]||0;
+  const msg=document.getElementById('form-msg');
+  if(!name||!city||!birth||!email||!phone||!plan||!start){msg.style.color='#ff3b30';msg.textContent='Preencha todos os campos e selecione um plano.';return;}
+  const d=new Date(start+'T12:00:00');d.setMonth(d.getMonth()+planMonths(plan));
+  const endDate=d.toISOString().split('T')[0];
+  const num=patients.length+1;
+  try{
+    await addDoc(colRef,{name,city,birth,email,phone,plan,value,startDate:start,endDate,consults:0,renewals:0,history:[],num,createdAt:serverTimestamp()});
+    msg.style.color='#34c759';msg.textContent='Paciente cadastrado!';
+    setTimeout(()=>{clearForm();window.showTab('patients');},800);
+  }catch(e){msg.style.color='#ff3b30';msg.textContent='Erro ao salvar.';}
+};
+window.clearForm=()=>{
+  ['f-name','f-city','f-birth','f-email','f-phone','f-start','f-value'].forEach(id=>document.getElementById(id).value='');
+  selectedPlan.new='';
+  document.querySelectorAll('#plan-cards .plan-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('f-end').value='';document.getElementById('form-msg').textContent='';
+};
+
+// CONSULT
+window.addConsult=async id=>{
+  const p=patients.find(x=>x.id===id);if(!p)return;
+  const num=(p.consults||0)+1;
+  const newHist=[...(p.history||[]),{type:'consulta',date:new Date().toISOString(),note:`Consulta #${num}`,plan:p.plan}];
+  await updateDoc(doc(db,'pacientes',id),{consults:num,history:newHist});
+};
+window.undoConsult=async id=>{
+  const p=patients.find(x=>x.id===id);if(!p||p.consults<=0)return;
+  const hist=[...(p.history||[])];
+  let lastIdx=-1;
+  for(let i=hist.length-1;i>=0;i--){if(hist[i].type==='consulta'){lastIdx=i;break;}}
+  const newHist=lastIdx>=0?hist.filter((_,i)=>i!==lastIdx):hist;
+  await updateDoc(doc(db,'pacientes',id),{consults:p.consults-1,history:newHist});
+};
+window.setConsult=async(id,val)=>{
+  const p=patients.find(x=>x.id===id);if(!p)return;
+  const novo=Math.max(0,parseInt(val)||0);if(novo===p.consults)return;
+  let newHist=[...(p.history||[])];
+  if(novo>p.consults){for(let i=p.consults+1;i<=novo;i++)newHist.push({type:'consulta',date:new Date().toISOString(),note:`Consulta #${i}`,plan:p.plan});}
+  else{let rem=p.consults-novo;for(let i=newHist.length-1;i>=0&&rem>0;i--){if(newHist[i].type==='consulta'){newHist.splice(i,1);rem--;}}}
+  await updateDoc(doc(db,'pacientes',id),{consults:novo,history:newHist});
+};
+window.removePatient=async id=>{if(!confirm('Remover este paciente?'))return;await deleteDoc(doc(db,'pacientes',id));};
+
+// RENEWAL
+window.openRenewal=id=>{
+  renewalPatientId=id;selectedPlan.renewal='';
+  document.querySelectorAll('#renewal-plan-cards .plan-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('renewal-value').value='';
+  document.getElementById('renewal-summary').textContent='Selecione um plano acima.';
+  document.getElementById('modal-renewal').classList.add('open');
+};
+window.confirmRenewal=async()=>{
+  const p=patients.find(x=>x.id===renewalPatientId);if(!p)return;
+  const plan=selectedPlan.renewal;if(!plan){alert('Selecione um plano.');return;}
+  const value=parseFloat(document.getElementById('renewal-value').value)||PLAN_PRICES[plan]||0;
+  const newEnd=new Date(p.endDate+'T12:00:00');newEnd.setMonth(newEnd.getMonth()+planMonths(plan));
+  const entry={type:'renovacao',date:new Date().toISOString(),note:`Renovação #${(p.renewals||0)+1} — Plano ${planLabel(plan)} — ${fmtMoney(value)} — término: ${newEnd.toLocaleDateString('pt-BR')}`,plan,value};
+  await updateDoc(doc(db,'pacientes',renewalPatientId),{endDate:newEnd.toISOString().split('T')[0],plan,value,renewals:(p.renewals||0)+1,consults:0,history:arrayUnion(entry)});
+  closeModal('modal-renewal');
+};
+window.closeModal=id=>document.getElementById(id).classList.remove('open');
+
+// CALENDAR
+window.calPrev=()=>{calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();};
+window.calNext=()=>{calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();};
+
+function renderCalendar(){
+  document.getElementById('cal-title').textContent=`${MONTHS_PT[calMonth]} ${calYear}`;
+  const today=new Date();today.setHours(0,0,0,0);
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+
+  // Map endDates to days in this month
+  const endMap={};
+  patients.forEach(p=>{
+    const ed=new Date(p.endDate+'T12:00:00');
+    if(ed.getFullYear()===calYear&&ed.getMonth()===calMonth){
+      const day=ed.getDate();
+      if(!endMap[day])endMap[day]=[];
+      endMap[day].push(p);
+    }
+  });
+
+  let html='';
+  // prev month days
+  for(let i=firstDay-1;i>=0;i--) html+=`<div class="cal-day other">${daysInPrev-i}</div>`;
+  // current month
+  for(let d=1;d<=daysInMonth;d++){
+    const thisDate=new Date(calYear,calMonth,d);thisDate.setHours(0,0,0,0);
+    const isToday=thisDate.getTime()===today.getTime();
+    const ps=endMap[d];
+    let cls='cal-day';
+    if(isToday) cls+=' today';
+    if(ps){
+      cls+=' has-end';
+      const daysLeft=getDaysLeft(new Date(calYear,calMonth,d).toISOString().split('T')[0]);
+      if(daysLeft<0) cls+=' end-warn';
+      else if(daysLeft<=30) cls+=' end-active';
+      else cls+=' end-ok';
+    }
+    const dot=ps?'<div class="cal-dot"></div>':'';
+    html+=`<div class="${cls}" ${ps?`onclick="openCalDay(${d})"`:''}>${d}${dot}</div>`;
+  }
+  // next month padding
+  const total=firstDay+daysInMonth;const rem=total%7===0?0:7-(total%7);
+  for(let i=1;i<=rem;i++) html+=`<div class="cal-day other">${i}</div>`;
+  document.getElementById('cal-days').innerHTML=html;
+
+  // Month summary list
+  const thisMonthPts=patients.filter(p=>{
+    const ed=new Date(p.endDate+'T12:00:00');
+    return ed.getFullYear()===calYear&&ed.getMonth()===calMonth;
+  }).sort((a,b)=>new Date(a.endDate)-new Date(b.endDate));
+  if(thisMonthPts.length){
+    document.getElementById('cal-month-list').innerHTML=`
+      <div class="form-card"><h3>${thisMonthPts.length} contrato${thisMonthPts.length!==1?'s':''} encerrando em ${MONTHS_PT[calMonth]}</h3>
+      ${thisMonthPts.map(p=>`
+        <div class="modal-patient-row" onclick="window.showTab('patients')">
+          <div class="avatar" style="width:34px;height:34px;font-size:11px">${initials(p.name)}</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600">${p.name}</div><div style="font-size:11px;color:var(--gray)">${fmtDate(p.endDate)} • ${planLabel(p.plan)}</div></div>
+          <span class="badge ${getDaysLeft(p.endDate)<0?'red':getDaysLeft(p.endDate)<=30?'amber':'green'}">${getDaysLeft(p.endDate)<0?'Encerrado':getDaysLeft(p.endDate)+'d'}</span>
+        </div>`).join('')}
+      </div>`;
+  } else {
+    document.getElementById('cal-month-list').innerHTML=`<div class="empty">Nenhum contrato encerrando em ${MONTHS_PT[calMonth]}.</div>`;
+  }
+}
+
+window.openCalDay=day=>{
+  const ps=patients.filter(p=>{const ed=new Date(p.endDate+'T12:00:00');return ed.getFullYear()===calYear&&ed.getMonth()===calMonth&&ed.getDate()===day;});
+  if(!ps.length)return;
+  document.getElementById('modal-cal-title').textContent=`${day} de ${MONTHS_PT[calMonth]}`;
+  document.getElementById('modal-cal-sub').textContent=`${ps.length} contrato${ps.length!==1?'s':''} encerrando neste dia`;
+  document.getElementById('modal-cal-list').innerHTML=ps.map(p=>`
+    <div class="modal-patient-row" onclick="closeModal('modal-cal');window.showTab('patients')">
+      <div class="avatar">${initials(p.name)}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">${p.name}</div>
+        <div style="font-size:12px;color:var(--gray)">${p.city||''} • ${planLabel(p.plan)}</div>
+        <div style="font-size:12px;color:var(--gray)">${p.phone}</div>
+      </div>
+      <div style="text-align:right">
+        <span class="badge ${planColor(p.plan)}">${planLabel(p.plan)}</span><br>
+        <span style="font-size:11px;color:var(--green);font-weight:700;margin-top:3px;display:block">${fmtMoney(p.value)}</span>
+      </div>
+    </div>`).join('');
+  document.getElementById('modal-cal').classList.add('open');
+};
+
+// FINANCE
+window.setFinPeriod=(p,el)=>{finPeriod=p;document.querySelectorAll('.fin-tab').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderFinance();};
+
+function renderFinance(){
+  const now=new Date();
+  let filtered=patients;
+  if(finPeriod==='month') filtered=patients.filter(p=>{const d=new Date(p.startDate+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  if(finPeriod==='year') filtered=patients.filter(p=>new Date(p.startDate+'T12:00:00').getFullYear()===now.getFullYear());
+
+  const total=filtered.reduce((s,p)=>s+(p.value||0),0);
+  const totalRenewals=filtered.reduce((s,p)=>{
+    const rens=(p.history||[]).filter(h=>h.type==='renovacao');
+    if(finPeriod==='month') return s+rens.filter(r=>{const d=new Date(r.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}).reduce((a,r)=>a+(r.value||0),0);
+    if(finPeriod==='year') return s+rens.filter(r=>new Date(r.date).getFullYear()===now.getFullYear()).reduce((a,r)=>a+(r.value||0),0);
+    return s+rens.reduce((a,r)=>a+(r.value||0),0);
+  },0);
+  const grandTotal=total+totalRenewals;
+
+  // by plan
+  const byPlan={intensivo:{count:0,val:0},completo:{count:0,val:0},basico:{count:0,val:0}};
+  filtered.forEach(p=>{byPlan[p.plan].count++;byPlan[p.plan].val+=(p.value||0);});
+
+  // monthly chart data (last 12 months)
+  const months12=[]; const labels12=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const m=d.getMonth(),y=d.getFullYear();
+    const mPts=patients.filter(p=>{const s=new Date(p.startDate+'T12:00:00');return s.getMonth()===m&&s.getFullYear()===y;});
+    const mVal=mPts.reduce((s,p)=>s+(p.value||0),0);
+    months12.push({val:mVal,count:mPts.length,label:MONTHS_PT[m].substring(0,3)+'/'+String(y).slice(2)});
+    labels12.push(MONTHS_PT[m].substring(0,3)+'/'+String(y).slice(2));
+  }
+
+  const periodLabel=finPeriod==='month'?`${MONTHS_PT[now.getMonth()]} ${now.getFullYear()}`:finPeriod==='year'?`Ano ${now.getFullYear()}`:'Todo o período';
+
+  document.getElementById('fin-content').innerHTML=`
+    <div class="metrics4">
+      <div class="metric"><div class="metric-label">Faturamento</div><div class="metric-val green" style="font-size:16px">${fmtMoney(grandTotal)}</div></div>
+      <div class="metric"><div class="metric-label">Novos contratos</div><div class="metric-val blue">${filtered.length}</div></div>
+      <div class="metric"><div class="metric-label">Renovações</div><div class="metric-val purple" style="font-size:16px">${fmtMoney(totalRenewals)}</div></div>
+      <div class="metric"><div class="metric-label">Ticket médio</div><div class="metric-val" style="font-size:15px">${filtered.length?fmtMoney(total/filtered.length):'R$ 0'}</div></div>
+    </div>
+    <div class="chart-card">
+      <h3>Faturamento mensal (12 meses)</h3>
+      <div class="chart-wrap"><canvas id="chart-fat"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Novos cadastros por mês</h3>
+      <div class="chart-wrap"><canvas id="chart-new"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Receita por plano — ${periodLabel}</h3>
+      <div class="chart-wrap"><canvas id="chart-plan-fin"></canvas></div>
+    </div>
+    <div class="form-card">
+      <h3>Detalhamento por plano</h3>
+      ${['intensivo','completo','basico'].map(pl=>{
+        const pct=grandTotal>0?Math.round(byPlan[pl].val/grandTotal*100):0;
+        return `<div class="fin-row">
+          <div><div class="fin-row-label">${planLabel(pl)}</div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${pl==='intensivo'?'#a78bfa':pl==='completo'?'#60a5fa':'#86efac'}"></div></div></div>
+          <div style="text-align:right"><div class="fin-row-val">${fmtMoney(byPlan[pl].val)}</div><div style="font-size:11px;color:var(--gray)">${byPlan[pl].count} contrato${byPlan[pl].count!==1?'s':''} • ${pct}%</div></div>
+        </div>`;}).join('')}
+    </div>`;
+
+  setTimeout(()=>{
+    if(chartFat)chartFat.destroy();
+    chartFat=new Chart(document.getElementById('chart-fat'),{type:'bar',data:{labels:months12.map(m=>m.label),datasets:[{label:'Faturamento',data:months12.map(m=>m.val),backgroundColor:'#60a5fa',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR')}}}}});
+    if(chartNew)chartNew.destroy();
+    chartNew=new Chart(document.getElementById('chart-new'),{type:'line',data:{labels:months12.map(m=>m.label),datasets:[{label:'Cadastros',data:months12.map(m=>m.count),borderColor:'#34c759',backgroundColor:'rgba(52,199,89,.15)',fill:true,tension:.3,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+    if(chartPlanFin)chartPlanFin.destroy();
+    chartPlanFin=new Chart(document.getElementById('chart-plan-fin'),{type:'doughnut',data:{labels:['Intensivo','Completo','Básico'],datasets:[{data:[byPlan.intensivo.val,byPlan.completo.val,byPlan.basico.val],backgroundColor:['#a78bfa','#60a5fa','#86efac'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+  },80);
+}
+
+// HISTORY
+window.renderHistSearch=()=>{
+  const q=document.getElementById('hist-search').value.trim().toLowerCase();
+  document.getElementById('hist-detail').innerHTML='';
+  if(!q){document.getElementById('hist-results').innerHTML='';return;}
+  const res=patients.filter(p=>p.name.toLowerCase().includes(q));
+  if(!res.length){document.getElementById('hist-results').innerHTML='<div class="empty">Nenhum paciente encontrado.</div>';return;}
+  document.getElementById('hist-results').innerHTML=res.map(p=>`
+    <div class="card" style="cursor:pointer" onclick="showHistDetail('${p.id}')">
+      <div class="card-top"><div class="avatar">${initials(p.name)}</div>
+      <div><div class="cname">${p.name}</div><div class="csub">${p.city||''} • ${planLabel(p.plan)}</div></div>
+      <div class="cbadges"><span class="badge ${planColor(p.plan)}">${planLabel(p.plan)}</span></div></div>
+    </div>`).join('');
+};
+window.showHistDetail=id=>{
+  const p=patients.find(x=>x.id===id);if(!p)return;
+  const hist=(p.history||[]).filter(h=>h.type==='consulta'||h.type==='renovacao'||h.type==='change').slice().reverse();
+  document.getElementById('hist-detail').innerHTML=`
+    <div class="form-card"><h3>Histórico — ${p.name}</h3>
+    <div style="margin-bottom:12px;font-size:13px;color:var(--gray)">${p.consults} consulta${p.consults!==1?'s':''} • ${p.renewals||0} renovação${(p.renewals||0)!==1?'ões':''} • Valor atual: <strong>${fmtMoney(p.value)}</strong></div>
+    ${hist.length?hist.map(h=>`
+      <div class="hist-item">
+        <div class="hist-dot ${h.type==='renovacao'?'renew':h.type==='change'?'change':''}"></div>
+        <div>
+          <div class="hist-title">${h.note}</div>
+          ${h.plan&&h.type==='consulta'?`<span class="hist-plan-tag">Plano ${planLabel(h.plan)}</span>`:''}
+          <div class="hist-date">${new Date(h.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>`).join(''):'<div style="font-size:13px;color:var(--gray);text-align:center;padding:1rem">Sem histórico.</div>'}
+    </div>`;
+};
+
+// EDIT
+window.renderEditSearch=()=>{
+  const q=document.getElementById('edit-search').value.trim().toLowerCase();
+  document.getElementById('edit-detail').innerHTML='';
+  if(!q){document.getElementById('edit-results').innerHTML='';return;}
+  const res=patients.filter(p=>p.name.toLowerCase().includes(q));
+  if(!res.length){document.getElementById('edit-results').innerHTML='<div class="empty">Nenhum paciente encontrado.</div>';return;}
+  document.getElementById('edit-results').innerHTML=res.map(p=>`
+    <div class="card" style="cursor:pointer" onclick="showEditDetail('${p.id}')">
+      <div class="card-top"><div class="avatar">${initials(p.name)}</div>
+      <div><div class="cname">${p.name}</div><div class="csub">${p.city||''} • ${planLabel(p.plan)} • ${fmtMoney(p.value)}</div></div>
+      <div class="cbadges"><span class="badge ${planColor(p.plan)}">${planLabel(p.plan)}</span></div></div>
+    </div>`).join('');
+};
+window.showEditDetail=id=>{
+  const p=patients.find(x=>x.id===id);if(!p)return;
+  document.getElementById('edit-results').innerHTML='';document.getElementById('edit-search').value='';
+  selectedPlan.edit=p.plan;
+  document.getElementById('edit-detail').innerHTML=`
+    <div class="edit-profile">
+      <div class="edit-avatar">${initials(p.name)}</div>
+      <div><div style="font-size:17px;font-weight:700">${p.name}</div><div style="font-size:12px;color:var(--gray)">#${padNum(p.num||0)} • ${p.city||''}</div></div>
+    </div>
+    <div class="form-card"><h3>Dados pessoais</h3>
+      <div class="field"><label>Nome</label><input id="e-name" type="text" value="${p.name||''}"></div>
+      <div class="field"><label>Cidade</label><input id="e-city" type="text" value="${p.city||''}"></div>
+      <div class="field"><label>Nascimento</label><input id="e-birth" type="date" value="${p.birth||''}"></div>
+      <div class="field"><label>E-mail</label><input id="e-email" type="email" value="${p.email||''}"></div>
+      <div class="field"><label>Contato</label><input id="e-phone" type="tel" value="${p.phone||''}"></div>
+    </div>
+    <div class="form-card"><h3>Programa vigente</h3>
+      <p style="font-size:12px;color:var(--gray);margin-bottom:12px">Plano atual: <strong>${planLabel(p.plan)}</strong></p>
+      <div class="plan-cards" id="edit-plan-cards">
+        <div class="plan-card ${p.plan==='intensivo'?'selected':''}" onclick="selectPlan('intensivo',this,'edit')"><div class="plan-card-name">🏆 Intensivo</div><div class="plan-card-desc">12m • Ilimitado</div><div class="plan-card-price">R$ 4.000,00</div></div>
+        <div class="plan-card ${p.plan==='completo'?'selected':''}" onclick="selectPlan('completo',this,'edit')"><div class="plan-card-name">⭐ Completo</div><div class="plan-card-desc">12m • 5 consultas</div><div class="plan-card-price">R$ 3.200,00</div></div>
+        <div class="plan-card ${p.plan==='basico'?'selected':''}" onclick="selectPlan('basico',this,'edit')"><div class="plan-card-name">✅ Básico</div><div class="plan-card-desc">6m • 2 consultas</div><div class="plan-card-price">R$ 2.100,00</div></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Valor do contrato (R$)</label><input id="e-value" type="number" value="${p.value||PLAN_PRICES[p.plan]||''}"></div>
+      <div class="field"><label>Data de início</label><input id="e-start" type="date" value="${p.startDate||''}" oninput="calcEnd('e-start','e-end','edit')"></div>
+      <div class="field"><label>Data de término</label><input id="e-end" type="text" readonly value="${fmtDate(p.endDate)}"></div>
+    </div>
+    <button class="btn-primary" onclick="saveEdit('${id}')">Salvar alterações</button>
+    <button class="btn-secondary" style="margin-top:0" onclick="document.getElementById('edit-detail').innerHTML=''">Cancelar</button>
+    <div class="form-msg" id="edit-msg"></div>`;
+};
+window.saveEdit=async id=>{
+  const p=patients.find(x=>x.id===id);if(!p)return;
+  const name=document.getElementById('e-name').value.trim();
+  const city=document.getElementById('e-city').value.trim();
+  const birth=document.getElementById('e-birth').value;
+  const email=document.getElementById('e-email').value.trim();
+  const phone=document.getElementById('e-phone').value.trim();
+  const plan=selectedPlan.edit||p.plan;
+  const value=parseFloat(document.getElementById('e-value').value)||p.value||0;
+  const start=document.getElementById('e-start').value;
+  const msg=document.getElementById('edit-msg');
+  if(!name||!city||!birth||!email||!phone||!start){msg.style.color='#ff3b30';msg.textContent='Preencha todos os campos.';return;}
+  const d=new Date(start+'T12:00:00');d.setMonth(d.getMonth()+planMonths(plan));
+  const endDate=d.toISOString().split('T')[0];
+  let newHist=[...(p.history||[])];
+  if(plan!==p.plan) newHist.push({type:'change',date:new Date().toISOString(),note:`Plano alterado de ${planLabel(p.plan)} para ${planLabel(plan)}`,plan});
+  try{
+    await updateDoc(doc(db,'pacientes',id),{name,city,birth,email,phone,plan,value,startDate:start,endDate,history:newHist});
+    msg.style.color='#34c759';msg.textContent='Alterações salvas!';
+    setTimeout(()=>{document.getElementById('edit-detail').innerHTML='';},800);
+  }catch(e){msg.style.color='#ff3b30';msg.textContent='Erro ao salvar.';}
+};
+
+// METRICS
+function renderMetrics(){
+  const total=patients.length;
+  const alertas=patients.filter(p=>{const ps=planStatus(p),cs=consultStatus(p);return ps==='encerrando'||ps==='encerrado'||cs==='excedido';}).length;
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Total de pacientes</div><div class="metric-val">${total}</div></div>
+    <div class="metric"><div class="metric-label">Com alertas</div><div class="metric-val red">${alertas}</div></div>`;
+}
+
+// LIST
+function renderList(){
+  const q=(document.getElementById('search-input')?.value||'').trim().toLowerCase();
+  const list=document.getElementById('patient-list');
+  let filtered=patients.filter(p=>{
+    const ps=planStatus(p),cs=consultStatus(p);
+    if(filterMode==='encerrando'&&ps!=='encerrando')return false;
+    if(filterMode==='encerrado'&&ps!=='encerrado')return false;
+    if(filterMode==='consultas'&&cs!=='excedido')return false;
+    if(q&&!p.name.toLowerCase().includes(q))return false;
+    return true;
+  });
+  filtered.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  if(!filtered.length){list.innerHTML='<div class="empty">Nenhum paciente encontrado.</div>';return;}
+  const groups={};
+  filtered.forEach(p=>{const l=p.name[0].toUpperCase();if(!groups[l])groups[l]=[];groups[l].push(p);});
+  list.innerHTML=Object.keys(groups).sort().map(l=>`<div style="margin-bottom:4px"><div class="alpha-label">${l}</div>${groups[l].map(renderCard).join('')}</div>`).join('');
+}
+
+function renderCard(p){
+  const ps=planStatus(p),cs=consultStatus(p);
+  const max=p.plan==='intensivo'?null:p.plan==='completo'?5:2;
+  const daysLeft=getDaysLeft(p.endDate);
+  let cls='card';
+  if(cs==='excedido')cls+=' extra';else if(ps==='encerrado')cls+=' danger';else if(ps==='encerrando')cls+=' warn';
+  const psBadge=ps==='ativo'?'<span class="badge green">Ativo</span>':ps==='encerrando'?'<span class="badge amber">Encerrando</span>':'<span class="badge red">Encerrado</span>';
+  const plBadge=`<span class="badge ${planColor(p.plan)}">${planLabel(p.plan)}</span>`;
+  let dotsHtml='';
+  if(p.plan!=='intensivo'){
+    const tot=Math.max(max,p.consults||0);
+    dotsHtml=Array.from({length:tot}).map((_,i)=>i<(p.consults||0)&&i<max?'<div class="dot used"></div>':i>=max&&i<(p.consults||0)?'<div class="dot extra"></div>':'<div class="dot"></div>').join('');
+  }
+  let alertHtml='';
+  if(cs==='excedido')alertHtml+=`<div class="alert-msg coral">${p.consults} realizadas / ${max} inclusas — consulta extra.</div>`;
+  else if(cs==='limite')alertHtml+=`<div class="alert-msg amber">Todas as consultas utilizadas.</div>`;
+  if(ps==='encerrando'&&daysLeft>=0)alertHtml+=`<div class="alert-msg amber">Encerra em ${daysLeft} dia${daysLeft!==1?'s':''}. Faça o follow-up!</div>`;
+  if(ps==='encerrado')alertHtml+=`<div class="alert-msg red">Encerrado há ${Math.abs(daysLeft)} dia${Math.abs(daysLeft)!==1?'s':''}.</div>`;
+  const rTag=p.renewals>0?`<span class="renewal-tag">🔄 ${p.renewals}x</span>`:'';
+  const age=calcAge(p.birth);
+  return `<div class="${cls}">
+    <div class="card-top">
+      <div class="avatar">${initials(p.name)}</div>
+      <div style="flex:1"><div class="cname">${p.name} ${rTag}</div>
+      <div class="csub">${p.city||''}${age?' • '+age+' anos':''}</div>
+      <div class="csub">${p.phone} • <strong>${fmtMoney(p.value)}</strong></div></div>
+      <div class="cbadges">${plBadge}${psBadge}</div>
+    </div>
+    <div class="card-info">
+      <div><div class="il">Nº</div><div class="iv">#${padNum(p.num||0)}</div></div>
+      <div><div class="il">Início</div><div class="iv">${fmtDate(p.startDate)}</div></div>
+      <div><div class="il">Término</div><div class="iv">${fmtDate(p.endDate)}</div></div>
+    </div>
+    <div style="padding-top:8px;border-top:1px solid var(--border)">
+      ${p.plan!=='intensivo'?`<div class="dots" style="margin-bottom:6px">${dotsHtml}<span style="font-size:11px;color:var(--gray);margin-left:4px">${p.consults||0}/${max}</span></div>`:`<div style="font-size:11px;color:var(--blue);font-weight:600;margin-bottom:6px">Ilimitado • ${p.consults||0} realizadas</div>`}
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <button class="btn-sm btn-undo" onclick="undoConsult('${p.id}')" ${(p.consults||0)<=0?'disabled style="opacity:.35"':''}>− Consulta</button>
+        <div style="display:flex;align-items:center;gap:3px;background:var(--bg);border-radius:9px;padding:2px 8px">
+          <button onclick="setConsult('${p.id}',${(p.consults||0)-1})" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--gray);padding:0 2px" ${(p.consults||0)<=0?'disabled style="opacity:.35"':''}>−</button>
+          <input type="number" min="0" value="${p.consults||0}" onchange="setConsult('${p.id}',this.value)" style="width:36px;text-align:center;border:none;background:none;font-size:15px;font-weight:700;color:var(--text);outline:none">
+          <button onclick="setConsult('${p.id}',${(p.consults||0)+1})" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--blue);padding:0 2px">+</button>
+        </div>
+        <button class="btn-sm btn-add" onclick="addConsult('${p.id}')">+ Consulta</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+      <button class="btn-sm" style="background:#f0fff4;color:#1a7a3e;border:1px solid #b6e8c8" onclick="openRenewal('${p.id}')">🔄 Renovar</button>
+      <button class="btn-sm btn-del" onclick="removePatient('${p.id}')">Remover</button>
+    </div>
+    ${alertHtml}
+  </div>`;
+}
+
+// NOTIF
+function checkMonthlyNotif(){
+  const key='imo-notif-'+new Date().getFullYear()+'-'+(new Date().getMonth()+1);
+  if(localStorage.getItem(key))return;
+  const now=new Date();
+  const ending=patients.filter(p=>{const ed=new Date(p.endDate+'T12:00:00');return ed.getMonth()===now.getMonth()&&ed.getFullYear()===now.getFullYear();});
+  if(!ending.length)return;
+  document.getElementById('notif-month').textContent=`${MONTHS_PT[now.getMonth()]} de ${now.getFullYear()}`;
+  document.getElementById('notif-list').innerHTML=ending.map(p=>`
+    <div class="notif-patient">
+      <div class="avatar" style="width:34px;height:34px;font-size:11px">${initials(p.name)}</div>
+      <div><div class="notif-pname">${p.name}</div><div class="notif-pinfo">${fmtDate(p.endDate)} • ${planLabel(p.plan)}</div></div>
+    </div>`).join('');
+  document.getElementById('notif-overlay').classList.add('open');
+  localStorage.setItem(key,'1');
+}
+window.closeNotif=()=>document.getElementById('notif-overlay').classList.remove('open');
+
+document.getElementById('f-start').value=new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
