@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>IMO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--g:#00c46a;--gd:#009f55;--gw:rgba(0,196,106,.3);--dk:#0a0f0d;--dc:#111a15;--db:#1e2d24;--tl:#f0fff6;--tm:#6b8f78;--bl:#007aff;--rd:#ff3b30;--am:#ff9500;--pu:#af52de;--ab:#f2f2f7;--abr:#e5e5ea;--at:#1c1c1e;--ag:#8e8e93}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;max-width:480px;margin:0 auto;background:#0a0f0d}
+button{font-family:inherit}
+input{font-family:inherit}
+
+/* TOAST */
+#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4);border-left:3px solid var(--g)}
+
+/* CONFIRM */
+#confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;display:none;align-items:center;justify-content:center;padding:20px}
+#confirm-modal.show{display:flex}
+.cm-box{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:320px;text-align:center}
+.cm-ico{font-size:40px;margin-bottom:12px}
+.cm-tit{font-size:16px;font-weight:700;color:var(--at);margin-bottom:6px}
+.cm-msg{font-size:14px;color:var(--ag);margin-bottom:20px}
+.cm-btns{display:flex;gap:8px}
+.cm-btns button{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer}
+.cm-cancel{border:1px solid var(--abr);background:#fff;color:var(--ag)}
+.cm-ok{border:none;background:var(--rd);color:#fff}
+
+/* OVERLAYS */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-end;justify-content:center}
+.ov.show{display:flex}
+.ovbox{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;color:var(--at)}
+.ovbox h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.ovsub{font-size:13px;color:var(--ag);margin-bottom:16px}
+.ovx{float:right;background:var(--ab);border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;color:var(--ag)}
+.nov-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:center;justify-content:center;padding:20px}
+.nov-ov.show{display:flex}
+.nov-box{background:#fff;border-radius:20px;padding:20px;width:100%;max-width:380px;max-height:80vh;overflow-y:auto;color:var(--at)}
+
+/* LOGIN */
+#pg-login{min-height:100vh;background:var(--dk);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px}
+.logo-circle{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--g),var(--gd));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 40px var(--gw)}
+.logo-circle span{font-size:30px;font-weight:900;color:#fff}
+.logo-title{font-size:26px;font-weight:800;color:var(--tl);text-align:center}
+.logo-sub{font-size:13px;color:var(--tm);text-align:center;margin:4px 0 32px}
+.lbox{width:100%;max-width:380px;background:var(--dc);border:1px solid var(--db);border-radius:20px;padding:24px 20px}
+.ltabs{display:flex;background:#0d1510;border-radius:12px;padding:4px;margin-bottom:22px}
+.ltab{flex:1;padding:9px;border:none;background:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;color:var(--tm)}
+.ltab.on{background:var(--g);color:#fff}
+.lf{margin-bottom:14px}
+.lf label{font-size:13px;color:var(--tm);display:block;margin-bottom:5px}
+.lf input{width:100%;padding:12px 14px;background:#0d1510;border:1px solid var(--db);border-radius:12px;font-size:15px;color:var(--tl);outline:none;-webkit-appearance:none}
+.lf input:focus{border-color:var(--g)}
+.lf input::placeholder{color:#3d5a48}
+.lbtn{width:100%;padding:14px;background:linear-gradient(135deg,var(--g),var(--gd));color:#fff;border:none;border-radius:13px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px var(--gw)}
+.lerr{font-size:13px;color:#ff6b6b;text-align:center;margin-top:10px;min-height:18px}
+.lhint{font-size:12px;color:var(--tm);text-align:center;margin-top:14px}
+.ldemo{font-size:11px;color:var(--tm);text-align:center;margin-top:12px;background:#0d1510;padding:8px;border-radius:8px;line-height:1.7}
+
+/* MEMBER */
+#pg-member{display:none;min-height:100vh;background:var(--dk);color:var(--tl);padding-bottom:40px}
+.mtop{background:var(--dc);border-bottom:1px solid var(--db);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.mlogo{display:flex;align-items:center;gap:10px}
+.mlogoic{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--g),var(--gd));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff}
+.mbody{padding:18px 16px}
+.mhero{background:linear-gradient(135deg,#0d2b1a,#0a1f12);border:1px solid var(--db);border-radius:18px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
+.mhero::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(0,196,106,.15),transparent)}
+.mhplan{display:inline-flex;gap:6px;background:rgba(0,196,106,.12);border:1px solid rgba(0,196,106,.25);border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600;color:var(--g);margin-top:10px}
+.mcards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.mcard{background:var(--dc);border:1px solid var(--db);border-radius:14px;padding:14px}
+.mclbl{font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.mcval{font-size:20px;font-weight:700}.mcval.cg{color:var(--g)}.mcval.ca{color:var(--am)}.mcval.cr{color:var(--rd)}.mcval.sm{font-size:14px}
+.mcsub{font-size:11px;color:var(--tm);margin-top:2px}
+.mstat{padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.mstat.ok{background:rgba(0,196,106,.1);color:var(--g);border:1px solid rgba(0,196,106,.2)}
+.mstat.wn{background:rgba(255,149,0,.1);color:var(--am);border:1px solid rgba(255,149,0,.2)}
+.mstat.nd{background:rgba(255,59,48,.1);color:var(--rd);border:1px solid rgba(255,59,48,.2)}
+.msec{background:var(--dc);border:1px solid var(--db);border-radius:16px;padding:16px;margin-bottom:14px}
+.msec-t{font-size:14px;font-weight:700;margin-bottom:14px}
+.mpbar{height:8px;background:#1a2e20;border-radius:4px;overflow:hidden;margin-top:6px}
+.mpbar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--g),#00e87a)}
+.mpbar-txt{display:flex;justify-content:space-between;font-size:12px;color:var(--tm);margin-top:4px}
+.mdate-box{background:#162018;border:1px solid var(--db);border-radius:12px;padding:12px;text-align:center}
+.mdate-lbl{font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.mdate-val{font-size:15px;font-weight:700;color:var(--g)}
+.mdate-empty{font-size:12px;color:var(--tm);font-weight:400}
+.macts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.mact-btn{padding:14px 12px;border-radius:14px;border:none;cursor:pointer;font-size:13px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.mact-btn.pri{background:linear-gradient(135deg,var(--g),var(--gd));color:#fff;box-shadow:0 4px 20px var(--gw)}
+.mact-btn.sec{background:#162018;border:1px solid var(--db);color:var(--tl)}
+.mact-ico{font-size:22px}
+.mhi{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--db)}.mhi:last-child{border-bottom:none}
+.mhd{width:10px;height:10px;border-radius:50%;background:var(--g);flex-shrink:0;margin-top:3px}.mhd.b{background:var(--bl)}
+.mhtag{font-size:10px;background:rgba(0,196,106,.12);color:var(--g);padding:2px 7px;border-radius:8px;display:inline-block;margin-top:3px}
+.mhdata{font-size:11px;color:var(--g);margin-top:2px}
+.mhobs{font-size:11px;color:var(--tm);font-style:italic;margin-top:2px}
+.mhi-note{font-size:13px;font-weight:600}
+.mhi-date{font-size:11px;color:var(--tm);margin-top:2px}
+.mhi-empty{font-size:13px;color:var(--tm);text-align:center;padding:1rem}
+
+/* ADMIN */
+#pg-admin{display:none;background:var(--ab);min-height:100vh}
+.atop{background:#fff;border-bottom:1px solid var(--abr);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.atop h1{font-size:18px;font-weight:700;color:var(--at)}
+.atr{display:flex;align-items:center;gap:6px}
+.sync{font-size:11px;color:var(--ag);display:flex;align-items:center;gap:4px}
+.sdot{width:7px;height:7px;border-radius:50%;background:#34c759}.sdot.off{background:var(--rd)}
+.anome{font-size:11px;font-weight:600;color:var(--bl);background:#ddeeff;padding:3px 8px;border-radius:8px}
+.bellbtn{position:relative;background:none;border:none;font-size:20px;cursor:pointer;padding:0}
+.nbadge{position:absolute;top:-4px;right:-4px;background:var(--rd);color:#fff;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:none;align-items:center;justify-content:center}
+.nbadge.show{display:flex}
+.ebtn{padding:5px 10px;border-radius:8px;border:1px solid var(--abr);background:var(--ab);font-size:12px;font-weight:600;cursor:pointer;color:var(--ag)}
+.ebtn.on{background:#fff3d4;color:#b8600a;border-color:#f0c070}
+.obtn{padding:5px 10px;border-radius:8px;border:1px solid #ffd4d4;background:#fff0f0;font-size:12px;font-weight:600;cursor:pointer;color:var(--rd)}
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--abr);display:flex;z-index:200;padding-bottom:env(safe-area-inset-bottom)}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px 6px;border:none;background:none;cursor:pointer;color:var(--ag);font-size:9px;gap:2px}
+.nb svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nb.on{color:var(--bl)}
+.acont{padding:14px 14px 90px}
+.atab{display:none}.atab.on{display:block}
+
+/* CARDS */
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;border-left:4px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,.06);color:var(--at)}
+.card.w{border-left-color:var(--am)}.card.d{border-left-color:var(--rd)}.card.x{border-left-color:#ff6b35}
+.ctop{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.av{width:40px;height:40px;border-radius:50%;background:#e1f0ff;color:var(--bl);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.av.sm{width:34px;height:34px;font-size:11px}
+.cname{font-size:15px;font-weight:600}.csub{font-size:12px;color:var(--ag);margin-top:1px}
+.cbadges{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto;flex-shrink:0}
+.bx{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600}
+.bx.gn{background:#d4f5e2;color:#1a7a3e}.bx.am{background:#fff3d4;color:#b8600a}.bx.rd{background:#ffd4d4;color:#a00}.bx.bl{background:#ddeeff;color:#005fb8}.bx.pu{background:#ecdeff;color:#5b00b8}.bx.gy{background:#f0f0f5;color:#636366}
+.cinfo{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;border-top:1px solid var(--abr);padding-top:10px;margin-bottom:10px}
+.cil{color:var(--ag);margin-bottom:1px}.civ{color:var(--at);font-weight:600}
+.dots{display:flex;gap:3px;flex-wrap:wrap}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--ab);border:1.5px solid var(--abr)}.dot.u{background:var(--bl);border-color:var(--bl)}.dot.o{background:var(--rd);border-color:var(--rd)}
+.alr{font-size:12px;padding:6px 10px;border-radius:8px;margin-top:8px}.alr.am{background:#fff3d4;color:#b8600a}.alr.rd{background:#ffd4d4;color:#a00}.alr.co{background:#ffe8e0;color:#a03000}
+.rtag{font-size:10px;background:#d4f5e2;color:#1a7a3e;padding:2px 7px;border-radius:8px;font-weight:600}
+
+/* METRICS */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.mbox{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.mbox-l{font-size:11px;color:var(--ag);margin-bottom:2px}.mbox-v{font-size:22px;font-weight:700;color:var(--at)}
+.mbox-v.r{color:var(--rd)}.mbox-v.g{color:#34c759}.mbox-v.b{color:var(--bl)}.mbox-v.p{color:var(--pu)}
+
+/* FILTERS / SEARCH */
+.filts{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none;padding-bottom:2px}
+.filts::-webkit-scrollbar{display:none}
+.fb{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid var(--abr);background:#fff;font-size:13px;color:var(--ag);cursor:pointer}.fb.on{background:var(--bl);color:#fff;border-color:var(--bl)}
+.sb{background:#fff;border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:12px;border:1px solid var(--abr)}
+.sb input{border:none;outline:none;font-size:15px;flex:1;background:none;color:var(--at)}
+
+/* FORM */
+.fc{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);color:var(--at)}
+.fc h3{font-size:13px;font-weight:700;color:var(--ag);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.ff{margin-bottom:12px}
+.ff label{font-size:13px;color:var(--ag);display:block;margin-bottom:4px}
+.ff input{width:100%;padding:11px 13px;border:1px solid var(--abr);border-radius:11px;font-size:15px;background:#fff;color:var(--at);outline:none;-webkit-appearance:none;appearance:none}
+.ff input:focus{border-color:var(--bl)}
+.ff input[readonly]{background:var(--ab);color:var(--ag)}
+
+/* PLAN CARDS */
+.plancards{display:flex;flex-direction:column;gap:8px;margin-bottom:4px}
+.plancard{border:2px solid var(--abr);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all .15s;color:var(--at)}
+.plancard.on{border-color:var(--bl);background:#f0f7ff}
+.plancard-n{font-size:14px;font-weight:700}.plancard-d{font-size:12px;color:var(--ag);margin-top:2px}.plancard-p{font-size:13px;font-weight:700;color:#34c759;margin-top:4px}
+
+/* BUTTONS */
+.bp{width:100%;padding:14px;background:var(--bl);color:#fff;border:none;border-radius:13px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:8px}
+.bs{width:100%;padding:12px;background:var(--ab);color:var(--at);border:none;border-radius:13px;font-size:15px;cursor:pointer}
+.bsm{padding:6px 11px;border-radius:9px;border:none;font-size:12px;font-weight:500;cursor:pointer}
+.bbl{background:var(--bl);color:#fff}.bgr{background:#f0f0f5;color:var(--ag)}.brd{background:#fff0f0;color:var(--rd);border:1px solid #ffd4d4}.bgn{background:#f0fff4;color:#1a7a3e;border:1px solid #b6e8c8}.bblu{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.fmsg{font-size:13px;text-align:center;margin-top:8px}
+
+/* CHARTS */
+.cc{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.cc h3{font-size:14px;font-weight:700;margin-bottom:12px;color:var(--at)}
+.cw{position:relative;height:200px}
+.frow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--abr)}.frow:last-child{border-bottom:none}
+.pgbar{height:6px;background:var(--ab);border-radius:3px;overflow:hidden;margin-top:6px}.pgfill{height:100%;border-radius:3px}
+
+/* HISTORY */
+.hr{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--abr)}.hr:last-child{border-bottom:none}
+.hd{width:10px;height:10px;border-radius:50%;background:var(--bl);flex-shrink:0;margin-top:3px}.hd.g{background:#34c759}.hd.a{background:var(--am)}
+.htag{font-size:11px;background:#ddeeff;color:#005fb8;padding:2px 7px;border-radius:8px;display:inline-block;margin-top:3px}
+
+/* CALENDAR */
+.cnav{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:14px;padding:12px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.cnav button{border:none;background:var(--ab);border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:var(--at)}
+.cgrid{background:#fff;border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.cwds{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+.cwd{text-align:center;font-size:11px;font-weight:600;color:var(--ag);padding:4px 0}
+.cdys{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cdy{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-size:13px;font-weight:500}
+.cdy.ot{color:#c7c7cc}.cdy.td{background:#e1f0ff;color:var(--bl);font-weight:700}
+.cdy.ck{cursor:pointer;font-weight:700}
+.cdy.ce{background:#ffd4d4;color:#a00}.cdy.cwa{background:#fff3d4;color:#b8600a}.cdy.cok{background:#d4f5e2;color:#1a7a3e}
+.cdot{width:5px;height:5px;border-radius:50%;background:currentColor;margin-top:1px}
+.cleg{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--ag);margin-bottom:12px}
+
+/* MISC */
+.alab{font-size:12px;font-weight:700;color:var(--bl);padding:4px 0;border-bottom:1px solid var(--abr);margin-bottom:6px}
+.fts{display:flex;gap:8px;margin-bottom:14px}
+.ft{flex:1;padding:9px;border-radius:12px;border:1px solid var(--abr);background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:center;color:var(--ag)}.ft.on{background:var(--bl);color:#fff;border-color:var(--bl)}
+.epr{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.eav{width:52px;height:52px;border-radius:50%;background:#e1f0ff;color:var(--bl);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+.mlr{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--abr)}.mlr:last-child{border-bottom:none}
+.empty{text-align:center;padding:3rem 1rem;color:var(--ag);font-size:14px}
+.ctipo-sel{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.tipo-opt{border:2px solid var(--abr);border-radius:12px;padding:10px 14px;cursor:pointer;color:var(--at)}
+.tipo-opt.on{border-color:var(--bl);background:#f0f7ff}
+.tipo-opt-n{font-size:14px;font-weight:600}
+.tipo-opt-d{font-size:12px;color:var(--ag);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- CONFIRM -->
+<div id="confirm-modal">
+  <div class="cm-box">
+    <div class="cm-ico">⚠️</div>
+    <div class="cm-tit" id="cm-titulo">Confirmar</div>
+    <div class="cm-msg" id="cm-msg"></div>
+    <div class="cm-btns">
+      <button class="cm-cancel" onclick="cancelarConfirm()">Cancelar</button>
+      <button class="cm-ok" onclick="confirmarAcao()">Remover</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LOGIN ====== -->
+<div id="pg-login">
+  <div class="logo-circle"><span>I</span></div>
+  <div class="logo-title">IMO</div>
+  <div class="logo-sub">Instituto de Medicina Orgânica</div>
+  <div class="lbox">
+    <div class="ltabs">
+      <button class="ltab on" id="lt-pac" onclick="swTab('pac')">Área do Paciente</button>
+      <button class="ltab" id="lt-adm" onclick="swTab('adm')">Administrador</button>
+    </div>
+    <div id="lf-pac">
+      <div class="lf"><label>Primeiro nome</label><input id="li-nome" type="text" placeholder="Ex: Maria" autocomplete="off"></div>
+      <div class="lf"><label>3 primeiros dígitos do CPF</label><input id="li-cpf" type="text" placeholder="Ex: 123" maxlength="3" autocomplete="off"></div>
+      <button class="lbtn" onclick="loginPaciente()">Entrar na Área do Paciente</button>
+      <div class="lerr" id="lerr-pac"></div>
+      <div class="lhint">Acesso exclusivo para pacientes cadastrados</div>
+    </div>
+    <div id="lf-adm" style="display:none">
+      <div class="lf"><label>Login</label><input id="li-user" type="text" placeholder="admin" autocomplete="off"></div>
+      <div class="lf"><label>Senha</label><input id="li-pass" type="password" placeholder="Senha" onkeydown="if(event.key==='Enter')loginAdmin()"></div>
+      <button class="lbtn" onclick="loginAdmin()">Entrar como Administrador</button>
+      <div class="lerr" id="lerr-adm"></div>
+    </div>
+  </div>
+  <div class="ldemo" id="demo-box"></div>
+</div>
+
+<!-- ====== MEMBER ====== -->
+<div id="pg-member">
+  <div class="mtop">
+    <div class="mlogo">
+      <div class="mlogoic">I</div>
+      <div><div style="font-size:15px;font-weight:700;color:var(--tl)">IMO</div><div style="font-size:11px;color:var(--tm)">Área do Paciente</div></div>
+    </div>
+    <button style="padding:6px 12px;background:transparent;border:1px solid var(--db);border-radius:8px;color:var(--tm);font-size:12px;cursor:pointer" onclick="sair()">Sair</button>
+  </div>
+  <div class="mbody" id="m-body"></div>
+</div>
+
+<!-- ====== ADMIN ====== -->
+<div id="pg-admin">
+  <div class="atop">
+    <h1>IMO Pacientes</h1>
+    <div class="atr">
+      <div class="sync"><div class="sdot off" id="sync-dot"></div><span id="sync-txt">...</span></div>
+      <span class="anome" id="admin-nome"></span>
+      <button class="bellbtn" onclick="abrirNotifs()">🔔<span class="nbadge" id="nbadge"></span></button>
+      <button class="ebtn" id="ebtn" onclick="toggleEM()">✏️ Editar</button>
+      <button class="obtn" onclick="sair()">Sair</button>
+    </div>
+  </div>
+  <nav class="bnav">
+    <button class="nb on" id="nb-pat" onclick="irTab('pat')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Pacientes</button>
+    <button class="nb" id="nb-cal" onclick="irTab('cal')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendário</button>
+    <button class="nb" id="nb-fin" onclick="irTab('fin')"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Financeiro</button>
+    <button class="nb" id="nb-his" onclick="irTab('his')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</button>
+    <button class="nb" id="nb-cad" onclick="irTab('cad')"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Cadastros</button>
+    <button class="nb" id="nb-novo" onclick="irTab('novo')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Novo</button>
+  </nav>
+  <div class="acont">
+    <div class="atab on" id="tab-pat">
+      <div id="dashboard"></div>
+      <div class="mgrid" id="metricas"></div>
+      <div class="sb"><span>🔍</span><input id="busca" placeholder="Buscar paciente..." oninput="renderLista()"></div>
+      <div class="filts">
+        <button class="fb on" onclick="setFiltro('todos',this)">Todos</button>
+        <button class="fb" onclick="setFiltro('encerrando',this)">Encerrando</button>
+        <button class="fb" onclick="setFiltro('encerrado',this)">Encerrados</button>
+        <button class="fb" onclick="setFiltro('excedido',this)">Cons. excedidas</button>
+        <button class="fb" onclick="setFiltro('novos',this)">🆕 Novos</button>
+      </div>
+      <div id="lista-pacs"></div>
+    </div>
+    <div class="atab" id="tab-cal">
+      <div class="cnav"><button onclick="calAnterior()">‹</button><span style="font-size:16px;font-weight:700;color:var(--at)" id="cal-titulo"></span><button onclick="calProximo()">›</button></div>
+      <div class="cleg">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:#d4f5e2;display:inline-block"></span>Ativo</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:#fff3d4;display:inline-block"></span>Encerrando</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:#ffd4d4;display:inline-block"></span>Encerrado</span>
+      </div>
+      <div class="cgrid"><div class="cwds"><div class="cwd">Dom</div><div class="cwd">Seg</div><div class="cwd">Ter</div><div class="cwd">Qua</div><div class="cwd">Qui</div><div class="cwd">Sex</div><div class="cwd">Sáb</div></div><div class="cdys" id="cal-dias"></div></div>
+      <div id="cal-lista"></div>
+    </div>
+    <div class="atab" id="tab-fin">
+      <div class="fts"><button class="ft on" onclick="setFinPer('mes',this)">Este mês</button><button class="ft" onclick="setFinPer('ano',this)">Este ano</button><button class="ft" onclick="setFinPer('total',this)">Total</button></div>
+      <div id="fin-cont"></div>
+    </div>
+    <div class="atab" id="tab-his">
+      <div class="sb"><span>🔍</span><input id="busca-hist" placeholder="Buscar paciente..." oninput="bHist()" onfocus="bHist()"></div>
+      <div id="hist-res"></div><div id="hist-det"></div>
+    </div>
+    <div class="atab" id="tab-cad">
+      <div class="sb"><span>🔍</span><input id="busca-cad" placeholder="Buscar paciente..." oninput="bCad()" onfocus="bCad()"></div>
+      <div id="cad-res"></div><div id="cad-det"></div>
+    </div>
+    <div class="atab" id="tab-novo">
+      <div class="fc"><h3>Dados do paciente</h3>
+        <div class="ff"><label>Nome completo *</label><input id="fn" placeholder="Nome completo"></div>
+        <div class="ff"><label>Cidade</label><input id="fci" placeholder="Cidade"></div>
+        <div class="ff"><label>Data de nascimento</label><input id="fb" type="date"></div>
+        <div class="ff"><label>CPF *</label><input id="fcpf" placeholder="000.000.000-00" maxlength="14"></div>
+        <div class="ff"><label>E-mail</label><input id="fem" type="email" placeholder="email@exemplo.com"></div>
+        <div class="ff"><label>Telefone</label><input id="ftel" type="tel" placeholder="(62) 99999-9999"></div>
+      </div>
+      <div class="fc"><h3>Programa</h3>
+        <div class="plancards" id="planos-novo"></div>
+        <div class="ff" style="margin-top:12px"><label>Valor (R$)</label><input id="fval" type="number" placeholder="Valor do contrato"></div>
+        <div class="ff"><label>Data de início</label><input id="fini" type="date" oninput="recalcFim('fini','ffim','novo')"></div>
+        <div class="ff"><label>Data de término</label><input id="ffim" readonly placeholder="—"></div>
+      </div>
+      <button class="bp" onclick="cadastrarPaciente()">Cadastrar paciente</button>
+      <button class="bs" onclick="limparForm()">Limpar</button>
+      <div class="fmsg" id="fmsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== OVERLAYS ====== -->
+<!-- Registrar consulta -->
+<div class="ov" id="ov-cons">
+  <div class="ovbox">
+    <button class="ovx" onclick="fecharOv('ov-cons')">✕</button>
+    <h2>Sessão de Acompanhamento</h2>
+    <p class="ovsub" id="ov-cons-sub"></p>
+    <div class="ff"><label>Data da sessão</label><input id="cons-data" type="date"></div>
+    <div class="ff"><label>Observação (opcional)</label><input id="cons-obs" placeholder="Ex: Ajuste na suplementação..."></div>
+    <button class="bp" onclick="confirmarConsulta()">Registrar sessão</button>
+  </div>
+</div>
+
+<!-- Modal data (1ª Consulta / Retorno) -->
+<div class="ov" id="ov-data-campo">
+  <div class="ovbox">
+    <button class="ovx" onclick="fecharOv('ov-data-campo')">✕</button>
+    <h2 id="ov-data-titulo">Definir data</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+      <div><label style="font-size:12px;color:var(--ag);display:block;margin-bottom:4px">Dia</label>
+        <select id="dc-dia" style="width:100%;padding:10px;border:1px solid var(--abr);border-radius:10px;font-size:15px;background:#fff;-webkit-appearance:none"></select></div>
+      <div><label style="font-size:12px;color:var(--ag);display:block;margin-bottom:4px">Mês</label>
+        <select id="dc-mes" style="width:100%;padding:10px;border:1px solid var(--abr);border-radius:10px;font-size:15px;background:#fff;-webkit-appearance:none"></select></div>
+      <div><label style="font-size:12px;color:var(--ag);display:block;margin-bottom:4px">Ano</label>
+        <select id="dc-ano" style="width:100%;padding:10px;border:1px solid var(--abr);border-radius:10px;font-size:15px;background:#fff;-webkit-appearance:none"></select></div>
+    </div>
+    <button class="bp" onclick="confirmarDataCampo()">Confirmar data</button>
+    <button class="bs" style="margin-top:0" onclick="limparDataCampo()">Limpar data</button>
+  </div>
+</div>
+<div class="ov" id="ov-edit-cons">
+  <div class="ovbox">
+    <button class="ovx" onclick="fecharOv('ov-edit-cons')">✕</button>
+    <h2>Editar Consulta</h2>
+    <div class="ff"><label>Data da consulta</label><input id="edit-cons-data" type="date"></div>
+    <div class="ff"><label>Observação</label><input id="edit-cons-obs" placeholder="Observação..."></div>
+    <button class="bp" onclick="salvarEditConsulta()">Salvar alterações</button>
+  </div>
+</div>
+
+<!-- Renovar -->
+<div class="ov" id="ov-ren">
+  <div class="ovbox">
+    <button class="ovx" onclick="fecharOv('ov-ren')">✕</button>
+    <h2>Renovar Plano</h2>
+    <div class="plancards" id="planos-ren" style="margin-bottom:12px"></div>
+    <div class="ff"><label>Valor da renovação (R$)</label><input id="ren-val" type="number" placeholder="Valor"></div>
+    <div id="ren-resumo" style="background:var(--ab);border-radius:10px;padding:12px;font-size:13px;color:var(--ag);margin-bottom:14px">Selecione um plano acima.</div>
+    <button class="bp" onclick="confirmarRenovacao()">Confirmar Renovação</button>
+  </div>
+</div>
+
+<!-- Dia do calendário -->
+<div class="ov" id="ov-cal-dia">
+  <div class="ovbox">
+    <button class="ovx" onclick="fecharOv('ov-cal-dia')">✕</button>
+    <h2 id="ov-cal-t"></h2><p class="ovsub" id="ov-cal-s"></p>
+    <div id="ov-cal-l"></div>
+  </div>
+</div>
+
+<!-- Modo edição -->
+<div class="ov" id="ov-em">
+  <div class="ovbox">
+    <button class="ovx" onclick="fecharOv('ov-em');modoEditar=false;updEB()">✕</button>
+    <h2>Modo Edição</h2><p class="ovsub">Edite configurações dos planos</p>
+    <div id="em-cont"></div>
+    <button class="bp" onclick="salvarEM()">Salvar configurações</button>
+    <div class="fmsg" id="em-msg"></div>
+  </div>
+</div>
+
+<!-- Notificações internas -->
+<div class="ov" id="ov-notifs">
+  <div class="ovbox">
+    <button class="ovx" onclick="fecharOv('ov-notifs')">✕</button>
+    <h2>Notificações</h2><p class="ovsub">Pendências para acompanhamento</p>
+    <div id="notifs-lista"></div>
+  </div>
+</div>
+
+<!-- Notificação mensal -->
+<div class="nov-ov" id="nov-mensal">
+  <div class="nov-box">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="font-size:28px">🔔</div>
+      <div><div style="font-size:17px;font-weight:700">Contratos encerrando este mês</div><div style="font-size:13px;color:var(--ag)" id="nov-mes"></div></div>
+    </div>
+    <div id="nov-lista"></div>
+    <button class="bp" style="margin-top:16px" onclick="fecharNovMensal()">Entendido</button>
+  </div>
+</div>
+
+<script>
+// =============================================
+// CONSTANTS
+// =============================================
+var WA_CLINICA = '5562993905078';
+var WA_FARM = '5583993117696';
+var ADMINS = [
+  {login:'admin',   senha:'imo2026', nome:'Administrador'},
+  {login:'kaeliny', senha:'imo2026', nome:'Dra. Kaeliny'},
+  {login:'equipe',  senha:'imo2026', nome:'Equipe IMO'}
+];
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// Mutable plan config
+var PL = {
+  intensivo:{n:'Programa Intensivo',e:'🏆',m:12,c:null,p:4000},
+  completo: {n:'Programa Completo', e:'⭐',m:12,c:5,   p:3200},
+  basico:   {n:'Programa Básico',   e:'✅',m:6, c:2,   p:1800},
+  avulso:   {n:'Programa Avulso',   e:'📌',m:0, c:null,p:0}
+};
+
+// =============================================
+// STATE
+// =============================================
+var pacs = [];
+var filtro = 'todos';
+var planoSel = {novo:'', ren:'', ed:''};
+var renId = null;
+var consId = null, consIdxEd = null, consTipo = 'Acompanhamento';
+var calAno = new Date().getFullYear(), calMes = new Date().getMonth();
+var finPer = 'mes';
+var modoEditar = false;
+var curUser = null;
+var notifItens = [];
+var chF=null,chN=null,chP=null;
+var confirmCb = null;
+
+// =============================================
+// HELPERS
+// =============================================
+function ini(n){return n.trim().split(' ').filter(Boolean).slice(0,2).map(function(w){return w[0].toUpperCase()}).join('')}
+function hj(){var d=new Date();d.setHours(0,0,0,0);return d}
+function dleft(dt){if(!dt)return null;return Math.round((new Date(dt+'T12:00:00')-hj())/86400000)}
+function pst(p){if(p.plan==='avulso'||!p.endDate)return'ativo';var d=dleft(p.endDate);return d<0?'encerrado':d<=30?'encerrando':'ativo'}
+function cst(p){var mx=PL[p.plan]?PL[p.plan].c:null;if(mx===null||mx===undefined)return'ok';var c=p.consults||0;return c>mx?'excedido':c===mx?'limite':'ok'}
+function pnm(k){return PL[k]?PL[k].n:k}
+function pcl(k){return k==='intensivo'?'pu':k==='completo'?'bl':k==='avulso'?'gy':'gy'}
+function pms(k){return PL[k]?PL[k].m:6}
+function age(b){if(!b)return null;var d=new Date(b),n=new Date(),a=n.getFullYear()-d.getFullYear();if(n<new Date(n.getFullYear(),d.getMonth(),d.getDate()))a--;return a}
+function fdt(s){if(!s)return'—';return new Date(s+'T12:00:00').toLocaleDateString('pt-BR')}
+function pad(n){return String(n).padStart(4,'0')}
+function R(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function ncpf(c){return(c||'').replace(/\D/g,'')}
+function edt(s,k){if(k==='avulso'||!pms(k))return'';var d=new Date(s+'T12:00:00');d.setMonth(d.getMonth()+pms(k));return d.toISOString().split('T')[0]}
+function validarCPF(c){c=c.replace(/\D/g,'');if(c.length!==11||/^(\d)\1{10}$/.test(c))return false;var s=0;for(var i=1;i<=9;i++)s+=parseInt(c[i-1])*(11-i);var r=(s*10)%11;if(r>=10)r=0;if(r!==parseInt(c[9]))return false;s=0;for(var j=1;j<=10;j++)s+=parseInt(c[j-1])*(12-j);r=(s*10)%11;if(r>=10)r=0;return r===parseInt(c[10])}
+
+// =============================================
+// TOAST & CONFIRM
+// =============================================
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none'},2500)}
+function mostrarConfirm(tit,msg,cb){document.getElementById('cm-titulo').textContent=tit;document.getElementById('cm-msg').textContent=msg;document.getElementById('confirm-modal').className='show';confirmCb=cb}
+function confirmarAcao(){document.getElementById('confirm-modal').className='';if(confirmCb)confirmCb();confirmCb=null}
+function cancelarConfirm(){document.getElementById('confirm-modal').className='';confirmCb=null}
+
+// =============================================
+// FIREBASE
+// =============================================
+var db,col,fbOk=false;
+try{
+  firebase.initializeApp({apiKey:"AIzaSyC30hLOPmj04lZUQtdKEAt7OqQQioThcFs",authDomain:"programas-imo.firebaseapp.com",projectId:"programas-imo",storageBucket:"programas-imo.firebasestorage.app",messagingSenderId:"1033939993776",appId:"1:1033939993776:web:242dbe8875706a9c196775"});
+  db=firebase.firestore();col=db.collection('pacientes');fbOk=true;
+}catch(e){console.log('Firebase unavailable')}
+
+function setSyncOk(){var d=document.getElementById('sync-dot'),t=document.getElementById('sync-txt');if(d)d.className='sdot';if(t)t.textContent=fbOk?'Sincronizado':'Demo'}
+function setSyncErr(){var d=document.getElementById('sync-dot'),t=document.getElementById('sync-txt');if(d)d.className='sdot off';if(t)t.textContent='Erro'}
+
+if(fbOk){
+  col.onSnapshot(function(snap){
+    pacs=snap.docs.map(function(d){return Object.assign({id:d.id},d.data())});
+    setSyncOk();atualizarTelas();
+  },function(){setSyncErr()});
+}else{
+  pacs=dadosDemo();setSyncOk();
+}
+
+function atualizarTelas(){
+  if(curUser&&curUser.tipo==='admin'){renderDashboard();renderLista();renderMetricas()}
+  if(curUser&&curUser.tipo==='pac'){var p=pacs.find(function(x){return x.id===curUser.id});if(p){curUser.dados=p;try{renderMembro();}catch(e){console.error('renderMembro error:',e);}}}
+}
+
+function fbSave(id,dados){
+  if(fbOk)return col.doc(id).update(dados);
+  var p=pacs.find(function(x){return x.id===id});if(p)Object.assign(p,dados);atualizarTelas();return Promise.resolve();
+}
+function fbDel(id){
+  if(fbOk)return col.doc(id).delete();
+  pacs=pacs.filter(function(x){return x.id!==id});atualizarTelas();return Promise.resolve();
+}
+function fbAdd(dados){
+  if(fbOk)return col.add(Object.assign({},dados,{criadoEm:firebase.firestore.FieldValue.serverTimestamp()}));
+  dados.id='local_'+Date.now();pacs.push(dados);atualizarTelas();return Promise.resolve();
+}
+
+// =============================================
+// DEMO DATA
+// =============================================
+function dadosDemo(){
+  var d1=new Date();d1.setMonth(d1.getMonth()-4);var e1=new Date(d1);e1.setMonth(e1.getMonth()+12);
+  var d2=new Date();d2.setMonth(d2.getMonth()-2);var e2=new Date(d2);e2.setMonth(e2.getMonth()+6);
+  var e3=new Date();e3.setDate(e3.getDate()+20);var s3=new Date(e3);s3.setMonth(s3.getMonth()-6);
+  return[
+    {id:'1',name:'Maria Silva',city:'Goiânia',birth:'1985-03-15',cpf:'52998224725',email:'maria@email.com',phone:'(62)98888-1111',plan:'intensivo',value:4000,startDate:d1.toISOString().split('T')[0],endDate:e1.toISOString().split('T')[0],consults:3,renewals:0,history:[{type:'consulta',date:d1.toISOString(),appointmentDate:d1.toISOString().split('T')[0],tipoConsulta:'Primeira Consulta',obs:'',note:'Primeira Consulta #1',plan:'intensivo'}],num:1},
+    {id:'2',name:'João Pereira',city:'Anápolis',birth:'1990-07-22',cpf:'11144477735',email:'joao@email.com',phone:'(62)97777-2222',plan:'completo',value:3200,startDate:d2.toISOString().split('T')[0],endDate:e2.toISOString().split('T')[0],consults:2,renewals:1,history:[],num:2},
+    {id:'3',name:'Ana Costa',city:'Goiânia',birth:'1978-11-08',cpf:'46761490080',email:'ana@email.com',phone:'(62)96666-3333',plan:'basico',value:1800,startDate:s3.toISOString().split('T')[0],endDate:e3.toISOString().split('T')[0],consults:1,renewals:0,history:[],num:3}
+  ];
+}
+
+// =============================================
+// SCREENS
+// =============================================
+function mostrarTela(t){
+  document.getElementById('pg-login').style.display=t==='login'?'flex':'none';
+  document.getElementById('pg-member').style.display=t==='member'?'block':'none';
+  document.getElementById('pg-admin').style.display=t==='admin'?'block':'none';
+  document.body.style.background=t==='admin'?'#f2f2f7':'#0a0f0d';
+}
+
+// =============================================
+// LOGIN
+// =============================================
+function swTab(t){
+  document.getElementById('lt-pac').classList.toggle('on',t==='pac');
+  document.getElementById('lt-adm').classList.toggle('on',t==='adm');
+  document.getElementById('lf-pac').style.display=t==='pac'?'':'none';
+  document.getElementById('lf-adm').style.display=t==='adm'?'':'none';
+}
+
+function loginPaciente(){
+  var nome=(document.getElementById('li-nome').value||'').trim().toLowerCase();
+  var cpf3=(document.getElementById('li-cpf').value||'').trim();
+  var err=document.getElementById('lerr-pac');
+  if(!nome||!cpf3){err.textContent='Preencha todos os campos.';return}
+  var p=pacs.find(function(x){return x.name.trim().split(' ')[0].toLowerCase()===nome&&ncpf(x.cpf).substring(0,3)===cpf3});
+  if(!p){err.textContent='Paciente não encontrado.';return}
+  curUser={tipo:'pac',id:p.id,dados:p};
+  try{renderMembro();}catch(e){console.error('renderMembro error:',e);document.getElementById('m-body').innerHTML='<div style="padding:20px;color:red">Erro ao carregar. Tente novamente.</div>';}
+  mostrarTela('member');
+}
+
+function loginAdmin(){
+  var login=(document.getElementById('li-user').value||'').trim().toLowerCase();
+  var senha=(document.getElementById('li-pass').value||'');
+  var err=document.getElementById('lerr-adm');
+  var adm=ADMINS.find(function(a){return a.login===login&&a.senha===senha});
+  if(!adm){err.textContent='Login ou senha incorretos.';return}
+  curUser={tipo:'admin',nome:adm.nome};
+  mostrarTela('admin');
+  var el=document.getElementById('admin-nome');if(el)el.textContent=adm.nome;
+  renderDashboard();renderLista();renderMetricas();checkNovMensal();
+}
+
+function sair(){
+  curUser=null;
+  ['li-nome','li-cpf','li-user','li-pass'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=''});
+  ['lerr-pac','lerr-adm'].forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=''});
+  mostrarTela('login');
+}
+
+// =============================================
+// MEMBER
+// =============================================
+function renderMembro(){
+  var p=curUser.dados;if(!p)return;
+  var av=p.plan==='avulso';
+  var ps=pst(p);
+  var dl=p.endDate?dleft(p.endDate):null;
+  var mx=PL[p.plan]?PL[p.plan].c:null;
+  var c=p.consults||0;
+  var id=age(p.birth);
+  var hist=(p.history||[]).filter(function(h){return h.type==='consulta'||h.type==='renovacao'}).reverse();
+  var pct=mx?Math.min(100,Math.round(c/mx*100)):0;
+  var waA='https://wa.me/'+WA_CLINICA+'?text='+encodeURIComponent('Olá! Sou '+p.name.split(' ')[0]+' e gostaria de agendar uma consulta.');
+  var waP='https://wa.me/'+WA_CLINICA+'?text='+encodeURIComponent('Olá! Gostaria de saber mais sobre os planos.');
+  var waF='https://wa.me/'+WA_FARM+'?text='+encodeURIComponent('Olá Dra. Kaeliny! Sou '+p.name.split(' ')[0]+', paciente IMO, e gostaria de conversar.');
+  var stHtml=av?'<div class="mstat ok">📌 Programa Avulso — sem prazo definido</div>':
+    ps==='ativo'?'<div class="mstat ok">✅ Ativo — '+dl+' dia'+(dl!==1?'s':'')+' restantes</div>':
+    ps==='encerrando'?'<div class="mstat wn">⚠️ Encerrando em '+dl+'d!</div>':
+    '<div class="mstat nd">❌ Encerrado há '+Math.abs(dl)+'d</div>';
+  var diasVal=av?'∞':(dl>=0?dl:0);
+  var diasCls=av?'cg':(dl<0?'cr':dl<=30?'ca':'cg');
+  var datasHtml='';
+  if(!av&&(p.primeiraConsulta||p.retorno)){
+    datasHtml='<div class="msec"><div class="msec-t">📅 Datas importantes</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+      '<div class="mdate-box"><div class="mdate-lbl">1ª Consulta</div><div class="mdate-val">'+(p.primeiraConsulta?fdt(p.primeiraConsulta):'<span class="mdate-empty">—</span>')+'</div></div>'+
+      '<div class="mdate-box"><div class="mdate-lbl">Retorno</div><div class="mdate-val">'+(p.retorno?fdt(p.retorno):'<span class="mdate-empty">—</span>')+'</div></div>'+
+      '</div></div>';
+  }
+  var progHtml=mx?'<div class="msec"><div class="msec-t">📊 Uso das consultas</div><div class="mpbar"><div class="mpbar-fill" style="width:'+pct+'%"></div></div><div class="mpbar-txt"><span>'+c+' realizadas</span><span>'+mx+' inclusas</span></div></div>':'';
+  var actsHtml='<div class="macts">'+
+    '<button class="mact-btn pri" onclick="window.open(\''+waA+'\',\'_blank\')"><span class="mact-ico">📅</span>Agendar consulta</button>'+
+    '<button class="mact-btn sec" onclick="window.open(\''+waP+'\',\'_blank\')"><span class="mact-ico">💬</span>Falar com a clínica</button>'+
+    '</div>';
+  var farmHtml=!av?'<div style="margin-bottom:14px"><button class="mact-btn sec" style="width:100%" onclick="window.open(\''+waF+'\',\'_blank\')"><span class="mact-ico">💊</span>Conversar com Farmacêutica</button></div>':'';
+  var histHtml=hist.length?hist.map(function(h){
+    var ico=h.tipoConsulta==='Primeira Consulta'?'🟢':h.tipoConsulta==='Retorno'?'🔵':'🟡';
+    var tag=h.type==='consulta'?'<span class="mhtag">'+ico+' '+(h.tipoConsulta||'Acompanhamento')+'</span>':'';
+    var dr=h.appointmentDate?'<div class="mhdata">📅 '+fdt(h.appointmentDate)+'</div>':'';
+    var ob=h.obs?'<div class="mhobs">📝 '+h.obs+'</div>':'';
+    return'<div class="mhi"><div class="mhd '+(h.type==='renovacao'?'b':'')+'"></div><div><div class="mhi-note">'+h.note+'</div>'+tag+dr+ob+'<div class="mhi-date">'+new Date(h.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</div></div></div>'
+  }).join(''):'<div class="mhi-empty">Sem consultas registradas.</div>';
+
+  var urlPlanos='https://institutomedicinaorganica.com.br/programa/';
+  document.getElementById('m-body').innerHTML=
+    '<div class="mhero"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'+
+    '<div style="flex:1"><div style="font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bem-vindo(a)</div>'+
+    '<div style="font-size:22px;font-weight:800">'+p.name+'</div>'+
+    (id?'<div style="font-size:13px;color:var(--tm);margin-top:2px">'+id+' anos'+(p.city?' • '+p.city:'')+'</div>':'')+'</div>'+
+    '<a href="'+urlPlanos+'" target="_blank" style="flex-shrink:0;display:inline-block;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:800;color:#fff;text-decoration:none;background:linear-gradient(145deg,#00d97a,#00a855);box-shadow:0 4px 0 #007a3d,0 6px 12px rgba(0,0,0,.35)">🏥 Planos</a>'+
+    '</div>'+
+    '<div class="mhplan" onclick="window.open(\''+urlPlanos+'\',\'_blank\')" style="cursor:pointer;margin-top:10px">'+(PL[p.plan]?PL[p.plan].e:'')+' '+pnm(p.plan)+' <span style="font-size:10px;opacity:.7">↗</span></div></div>'+
+    stHtml+
+    '<div class="mcards">'+
+      '<div class="mcard"><div class="mclbl">Consultas</div><div class="mcval '+(mx&&c>mx?'cr':'cg')+'">'+c+(mx?'/'+mx:'')+'</div><div class="mcsub">'+(av?'avulsas':mx?'inclusas':'ilimitadas')+'</div></div>'+
+      '<div class="mcard"><div class="mclbl">Dias restantes</div><div class="mcval '+diasCls+'">'+diasVal+'</div><div class="mcsub">'+(av?'sem prazo':dl<0?'encerrado':'dias')+'</div></div>'+
+      '<div class="mcard"><div class="mclbl">Início</div><div class="mcval sm">'+fdt(p.startDate)+'</div></div>'+
+      '<div class="mcard"><div class="mclbl">Término</div><div class="mcval sm">'+(av?'Sem prazo':fdt(p.endDate))+'</div></div>'+
+    '</div>'+
+    progHtml+datasHtml+actsHtml+farmHtml+
+    '<div class="msec"><div class="msec-t">🕐 Histórico de consultas</div>'+histHtml+'</div>';
+}
+
+// =============================================
+// ADMIN TABS
+// =============================================
+function irTab(t){
+  ['pat','cal','fin','his','cad','novo'].forEach(function(x){
+    document.getElementById('tab-'+x).classList.toggle('on',x===t);
+    document.getElementById('nb-'+x).classList.toggle('on',x===t);
+  });
+  if(t==='pat'){renderDashboard();renderLista();renderMetricas()}
+  if(t==='cal')renderCal();
+  if(t==='fin')renderFin();
+  if(t==='his'){document.getElementById('busca-hist').value='';bHist()}
+  if(t==='cad'){document.getElementById('busca-cad').value='';bCad()}
+  if(t==='novo')mkPlanCards('planos-novo','novo');
+}
+function setFiltro(f,el){filtro=f;document.querySelectorAll('.fb').forEach(function(b){b.classList.remove('on')});el.classList.add('on');renderLista()}
+function fecharOv(id){document.getElementById(id).classList.remove('show')}
+function abrirOv(id){document.getElementById(id).classList.add('show')}
+
+// =============================================
+// PLAN CARDS
+// =============================================
+function mkPlanCards(cid,ctx){
+  var el=document.getElementById(cid);if(!el)return;
+  el.innerHTML=Object.keys(PL).map(function(k){
+    var c=PL[k];
+    var desc=k==='avulso'?'Sem prazo • Consultas avulsas':c.m+'m • '+(c.c===null?'Ilimitadas':c.c+' consultas');
+    var preco=k==='avulso'?'Sem valor fixo':R(c.p);
+    return'<div class="plancard '+(planoSel[ctx]===k?'on':'')+'" onclick="selPlano(\''+k+'\',\''+cid+'\',\''+ctx+'\')"><div class="plancard-n">'+c.e+' '+c.n+'</div><div class="plancard-d">'+desc+'</div><div class="plancard-p">'+preco+'</div></div>';
+  }).join('');
+}
+function selPlano(k,cid,ctx){
+  planoSel[ctx]=k;mkPlanCards(cid,ctx);
+  if(ctx==='novo'){
+    var fv=document.getElementById('fval');if(fv)fv.value=k==='avulso'?'':PL[k].p;
+    recalcFim('fini','ffim','novo');
+  }
+  if(ctx==='ren'){
+    var rv=document.getElementById('ren-val');if(rv)rv.value=k==='avulso'?'':PL[k].p;
+    updRenResumo();
+  }
+  if(ctx==='ed'){
+    var ev=document.getElementById('eval');if(ev)ev.value=k==='avulso'?'':PL[k].p;
+    recalcFim('eini','efim','ed');
+  }
+}
+function recalcFim(si,ei,ctx){
+  var s=document.getElementById(si),e=document.getElementById(ei);if(!s||!e)return;
+  var k=planoSel[ctx];
+  if(k==='avulso'){e.value='Sem prazo';return}
+  if(!s.value||!k){e.value='';return}
+  e.value=fdt(edt(s.value,k));
+}
+
+// =============================================
+// CADASTRAR
+// =============================================
+function cadastrarPaciente(){
+  var nome=(document.getElementById('fn').value||'').trim();
+  var cidade=(document.getElementById('fci').value||'').trim();
+  var nasc=document.getElementById('fb').value||'';
+  var cpf=(document.getElementById('fcpf').value||'').trim();
+  var email=(document.getElementById('fem').value||'').trim();
+  var tel=(document.getElementById('ftel').value||'').trim();
+  var inicio=document.getElementById('fini').value||'';
+  var plano=planoSel.novo;
+  var valor=parseFloat(document.getElementById('fval').value)||0;
+  var msg=document.getElementById('fmsg');msg.textContent='';
+  if(!nome){msg.style.color='#ff3b30';msg.textContent='Nome completo é obrigatório.';return}
+  if(!cpf){msg.style.color='#ff3b30';msg.textContent='CPF é obrigatório.';return}
+  if(!validarCPF(cpf)){msg.style.color='#ff3b30';msg.textContent='CPF inválido.';return}
+  if(!plano){msg.style.color='#ff3b30';msg.textContent='Selecione um plano.';return}
+  if(plano!=='avulso'&&!inicio){msg.style.color='#ff3b30';msg.textContent='Selecione a data de início.';return}
+  var dtIni=plano==='avulso'?new Date().toISOString().split('T')[0]:inicio;
+  var dados={name:nome,city:cidade,birth:nasc,cpf:ncpf(cpf),email:email,phone:tel,plan:plano,value:plano==='avulso'?0:valor,startDate:dtIni,endDate:edt(dtIni,plano),consults:0,renewals:0,history:[],num:pacs.length+1};
+  fbAdd(dados).then(function(){
+    limparForm();irTab('pat');toast('✅ '+nome+' cadastrado!');
+  }).catch(function(e){msg.style.color='#ff3b30';msg.textContent='Erro ao salvar.'});
+}
+function limparForm(){
+  ['fn','fci','fb','fcpf','fem','ftel','fini','fval'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=''});
+  planoSel.novo='';
+  var el=document.getElementById('planos-novo');if(el)mkPlanCards('planos-novo','novo');
+  var ef=document.getElementById('ffim');if(ef)ef.value='';
+  var msg=document.getElementById('fmsg');if(msg)msg.textContent='';
+}
+
+// =============================================
+// SALVAR DATA (1ª consulta / retorno)
+// =============================================
+function salvarData(id,campo,val){
+  var upd={};upd[campo]=val;
+  fbSave(id,upd);
+}
+
+// =============================================
+// CONSULTAS
+// =============================================
+var _dcPacId=null,_dcCampo=null;
+
+function abrirDataCampo(id,campo){
+  var p=pacs.find(function(x){return x.id===id});if(!p)return;
+  _dcPacId=id;_dcCampo=campo;
+  var titulo=campo==='primeiraConsulta'?'1ª Consulta':'Retorno';
+  document.getElementById('ov-data-titulo').textContent='Data — '+titulo;
+  var valAtual=p[campo]||'';
+  var partes=valAtual?valAtual.split('-'):[];
+  var anoAtual=partes[0]?parseInt(partes[0]):new Date().getFullYear();
+  var mesAtual=partes[1]?parseInt(partes[1]):new Date().getMonth()+1;
+  var diaAtual=partes[2]?parseInt(partes[2]):new Date().getDate();
+  var selDia=document.getElementById('dc-dia');
+  selDia.innerHTML='';for(var d=1;d<=31;d++)selDia.innerHTML+='<option value="'+d+'" '+(d===diaAtual?'selected':'')+'>'+String(d).padStart(2,'0')+'</option>';
+  var selMes=document.getElementById('dc-mes');
+  selMes.innerHTML='';MESES.forEach(function(m,i){selMes.innerHTML+='<option value="'+(i+1)+'" '+((i+1)===mesAtual?'selected':'')+'>'+m.substring(0,3)+'</option>'});
+  var selAno=document.getElementById('dc-ano');
+  selAno.innerHTML='';var yr=new Date().getFullYear();for(var a=yr-5;a<=yr+2;a++)selAno.innerHTML+='<option value="'+a+'" '+(a===anoAtual?'selected':'')+'>'+a+'</option>';
+  abrirOv('ov-data-campo');
+}
+function confirmarDataCampo(){
+  var dia=String(document.getElementById('dc-dia').value).padStart(2,'0');
+  var mes=String(document.getElementById('dc-mes').value).padStart(2,'0');
+  var ano=document.getElementById('dc-ano').value;
+  var val=ano+'-'+mes+'-'+dia;
+  var upd={};upd[_dcCampo]=val;fbSave(_dcPacId,upd);
+  fecharOv('ov-data-campo');toast('Data salva!');
+}
+function limparDataCampo(){
+  var upd={};upd[_dcCampo]='';fbSave(_dcPacId,upd);
+  fecharOv('ov-data-campo');toast('Data removida');
+}
+
+function selTipo(t){consTipo=t}
+
+function abrirConsulta(id){
+  var p=pacs.find(function(x){return x.id===id});if(!p)return;
+  consId=id;consIdxEd=null;consTipo='Acompanhamento';
+  selTipo('Acompanhamento');
+  document.getElementById('ov-cons-sub').textContent=p.name+' — Consulta #'+((p.consults||0)+1);
+  document.getElementById('cons-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('cons-obs').value='';
+  abrirOv('ov-cons');
+}
+
+function confirmarConsulta(){
+  var p=pacs.find(function(x){return x.id===consId});if(!p)return;
+  var data=document.getElementById('cons-data').value||new Date().toISOString().split('T')[0];
+  var obs=document.getElementById('cons-obs').value.trim();
+  var n=(p.consults||0)+1;
+  var quem=curUser&&curUser.nome?' — '+curUser.nome:'';
+  var h=(p.history||[]).concat([{type:'consulta',date:new Date().toISOString(),appointmentDate:data,tipoConsulta:consTipo,obs:obs,note:consTipo+' #'+n+quem,plan:p.plan}]);
+  fbSave(consId,{consults:n,history:h});
+  fecharOv('ov-cons');toast('Consulta registrada!');
+}
+
+function desfazerConsulta(id){
+  var p=pacs.find(function(x){return x.id===id});if(!p||!p.consults)return;
+  var h=(p.history||[]).slice();
+  for(var i=h.length-1;i>=0;i--){if(h[i].type==='consulta'){h.splice(i,1);break}}
+  fbSave(id,{consults:p.consults-1,history:h});
+}
+
+function editarConsulta(pacId,idx){
+  var p=pacs.find(function(x){return x.id===pacId});if(!p)return;
+  var h=p.history[idx];if(!h)return;
+  consId=pacId;consIdxEd=idx;
+  document.getElementById('edit-cons-data').value=h.appointmentDate||h.date.split('T')[0];
+  document.getElementById('edit-cons-obs').value=h.obs||'';
+  abrirOv('ov-edit-cons');
+}
+function salvarEditConsulta(){
+  var p=pacs.find(function(x){return x.id===consId});if(!p)return;
+  var h=(p.history||[]).slice();
+  h[consIdxEd]=Object.assign({},h[consIdxEd],{appointmentDate:document.getElementById('edit-cons-data').value,obs:document.getElementById('edit-cons-obs').value.trim()});
+  fbSave(consId,{history:h});fecharOv('ov-edit-cons');toast('Consulta atualizada!');
+}
+
+// =============================================
+// REMOVER
+// =============================================
+function removerPaciente(id){
+  var p=pacs.find(function(x){return x.id===id});
+  mostrarConfirm('Remover paciente?','Deseja remover '+(p?p.name:'este paciente')+'?',function(){
+    fbDel(id);toast('Paciente removido');
+  });
+}
+
+// =============================================
+// RENOVAÇÃO
+// =============================================
+function abrirRenovacao(id){
+  renId=id;planoSel.ren='';
+  mkPlanCards('planos-ren','ren');
+  document.getElementById('ren-val').value='';
+  document.getElementById('ren-resumo').textContent='Selecione um plano acima.';
+  abrirOv('ov-ren');
+}
+function updRenResumo(){
+  var p=pacs.find(function(x){return x.id===renId});if(!p)return;
+  var k=planoSel.ren;if(!k){document.getElementById('ren-resumo').textContent='Selecione um plano.';return}
+  var nf=edt(p.endDate||new Date().toISOString().split('T')[0],k);
+  document.getElementById('ren-resumo').innerHTML='<b>'+p.name+'</b><br>Novo plano: '+pnm(k)+'<br>Término atual: '+fdt(p.endDate)+'<br>Novo término: '+fdt(nf);
+}
+function confirmarRenovacao(){
+  var p=pacs.find(function(x){return x.id===renId});if(!p)return;
+  var k=planoSel.ren;if(!k){toast('Selecione um plano.');return}
+  var v=parseFloat(document.getElementById('ren-val').value)||PL[k].p||0;
+  var base=p.endDate&&dleft(p.endDate)>0?p.endDate:new Date().toISOString().split('T')[0];
+  var nf=edt(base,k);
+  var entry={type:'renovacao',date:new Date().toISOString(),note:'Renovação #'+((p.renewals||0)+1)+' — '+pnm(k)+' — '+R(v),plan:k,value:v};
+  var h=(p.history||[]).concat([entry]);
+  fbSave(renId,{endDate:nf,plan:k,value:v,renewals:(p.renewals||0)+1,consults:0,history:h});
+  fecharOv('ov-ren');toast('Plano renovado!');
+}
+
+// =============================================
+// MODO EDIÇÃO
+// =============================================
+function toggleEM(){modoEditar=!modoEditar;updEB();if(modoEditar)abrirEM();else fecharOv('ov-em')}
+function updEB(){var b=document.getElementById('ebtn');b.textContent=modoEditar?'🔒 Sair':'✏️ Editar';b.classList.toggle('on',modoEditar)}
+function abrirEM(){
+  document.getElementById('em-cont').innerHTML=Object.keys(PL).map(function(k){var c=PL[k];return'<div style="background:var(--ab);border-radius:14px;padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:700;color:var(--ag);margin-bottom:10px;text-transform:uppercase">'+c.e+' '+c.n+'</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label style="font-size:12px;color:var(--ag);display:block;margin-bottom:3px">Nome</label><input id="emn-'+k+'" value="'+c.n+'" style="width:100%;padding:8px 10px;border:1px solid var(--abr);border-radius:9px;font-size:13px"></div><div><label style="font-size:12px;color:var(--ag);display:block;margin-bottom:3px">Valor (R$)</label><input id="emp-'+k+'" type="number" value="'+c.p+'" style="width:100%;padding:8px 10px;border:1px solid var(--abr);border-radius:9px;font-size:13px"></div><div><label style="font-size:12px;color:var(--ag);display:block;margin-bottom:3px">Duração (meses)</label><input id="emm-'+k+'" type="number" value="'+c.m+'" style="width:100%;padding:8px 10px;border:1px solid var(--abr);border-radius:9px;font-size:13px"></div><div><label style="font-size:12px;color:var(--ag);display:block;margin-bottom:3px">Consultas</label><input id="emc-'+k+'" value="'+(c.c===null?'Ilimitado':c.c)+'" style="width:100%;padding:8px 10px;border:1px solid var(--abr);border-radius:9px;font-size:13px"></div></div></div>'}).join('');
+  document.getElementById('em-msg').textContent='';abrirOv('ov-em');
+}
+function salvarEM(){
+  Object.keys(PL).forEach(function(k){
+    var n=document.getElementById('emn-'+k).value.trim();if(n)PL[k].n=n;
+    PL[k].p=parseFloat(document.getElementById('emp-'+k).value)||PL[k].p;
+    PL[k].m=parseInt(document.getElementById('emm-'+k).value)||PL[k].m;
+    var r=document.getElementById('emc-'+k).value.trim().toLowerCase();
+    PL[k].c=(r==='ilimitado'||r==='')?null:(parseInt(r)||PL[k].c);
+  });
+  document.getElementById('em-msg').style.color='#34c759';document.getElementById('em-msg').textContent='Salvo!';
+  setTimeout(function(){fecharOv('ov-em');modoEditar=false;updEB();renderLista()},700);
+}
+
+// =============================================
+// PDF EXPORT
+// =============================================
+function exportarPDF(id){
+  var p=pacs.find(function(x){return x.id===id});if(!p)return;
+  var doc=new jspdf.jsPDF();var y=20;
+  doc.setFontSize(20);doc.setFont(undefined,'bold');doc.text('IMO - Relatório do Paciente',20,y);y+=10;
+  doc.setDrawColor(0,196,106);doc.setLineWidth(.5);doc.line(20,y,190,y);y+=10;
+  doc.setFontSize(12);doc.setFont(undefined,'bold');doc.text('Dados Pessoais',20,y);y+=8;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');
+  var campos=[['Nome',p.name],['Cidade',p.city||'—'],['Nascimento',fdt(p.birth)],['Idade',(age(p.birth)||'—')+' anos'],['CPF',p.cpf||'—'],['E-mail',p.email||'—'],['Telefone',p.phone||'—']];
+  campos.forEach(function(c){doc.text(c[0]+': '+c[1],20,y);y+=6});
+  y+=4;doc.setFontSize(12);doc.setFont(undefined,'bold');doc.text('Programa',20,y);y+=8;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');
+  [['Plano',pnm(p.plan)],['Valor',p.plan==='avulso'?'Avulso':R(p.value)],['Início',fdt(p.startDate)],['Término',p.plan==='avulso'?'Sem prazo':fdt(p.endDate)],['Consultas',(p.consults||0)+''],['Renovações',(p.renewals||0)+'']].forEach(function(c){doc.text(c[0]+': '+c[1],20,y);y+=6});
+  var hist=(p.history||[]).filter(function(h){return h.type==='consulta'||h.type==='renovacao'});
+  if(hist.length){y+=4;doc.setFontSize(12);doc.setFont(undefined,'bold');doc.text('Histórico',20,y);y+=8;doc.setFontSize(9);doc.setFont(undefined,'normal');hist.forEach(function(h){if(y>270){doc.addPage();y=20}var dt=new Date(h.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});doc.text(dt+' — '+h.note,20,y);y+=5})}
+  y+=8;doc.setFontSize(8);doc.setTextColor(150);doc.text('Gerado em '+new Date().toLocaleDateString('pt-BR')+' — IMO',20,y);
+  doc.save('Relatorio_'+p.name.replace(/\s/g,'_')+'.pdf');toast('📄 PDF exportado!');
+}
+
+// =============================================
+// WHATSAPP FARMACÊUTICA
+// =============================================
+function abrirWAFarm(id){
+  var p=pacs.find(function(x){return x.id===id});if(!p)return;
+  window.open('https://wa.me/'+WA_FARM+'?text='+encodeURIComponent('Olá Dra. Kaeliny! Sou da equipe IMO. Gostaria de tratar sobre o paciente '+p.name+' ('+pnm(p.plan)+').'));
+}
+
+// =============================================
+// DASHBOARD
+// =============================================
+function renderDashboard(){
+  var el=document.getElementById('dashboard');if(!el)return;
+  var an=document.getElementById('admin-nome');if(an&&curUser&&curUser.nome)an.textContent=curUser.nome;
+  if(!pacs.length){el.innerHTML='';return}
+  var now=new Date();
+  var sem60=pacs.filter(function(p){
+    if(p.plan==='avulso')return false;
+    var datas=[];
+    (p.history||[]).filter(function(h){return h.type==='consulta'}).forEach(function(h){
+      datas.push(new Date(h.appointmentDate?h.appointmentDate+'T12:00:00':h.date));
+    });
+    if(p.primeiraConsulta)datas.push(new Date(p.primeiraConsulta+'T12:00:00'));
+    if(p.retorno)datas.push(new Date(p.retorno+'T12:00:00'));
+    if(!datas.length)return true;
+    var ultima=new Date(Math.max.apply(null,datas));
+    return(now-ultima)/86400000>60;
+  });
+  var semana=pacs.filter(function(p){if(p.plan==='avulso'||!p.endDate)return false;var d=dleft(p.endDate);return d>=0&&d<=7});
+  var limite=pacs.filter(function(p){return cst(p)==='limite'||cst(p)==='excedido'});
+  var novos=pacs.filter(function(p){var d=new Date(p.startDate+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+  notifItens=[];
+  semana.forEach(function(p){notifItens.push({ico:'⚠️',txt:p.name+' — plano encerra em '+dleft(p.endDate)+'d'})});
+  sem60.forEach(function(p){notifItens.push({ico:'🔴',txt:p.name+' — sem consulta há 60+ dias'})});
+  limite.forEach(function(p){notifItens.push({ico:'📋',txt:p.name+' — atingiu limite de consultas'})});
+  var badge=document.getElementById('nbadge');if(badge){badge.textContent=notifItens.length;badge.classList.toggle('show',notifItens.length>0)}
+  el.innerHTML='<div style="margin-bottom:16px"><div style="font-size:16px;font-weight:700;color:var(--at);margin-bottom:4px">📊 Dashboard</div>'+
+    '<div class="mgrid">'+
+      '<div class="mbox"><div class="mbox-l">Encerrando esta semana</div><div class="mbox-v '+(semana.length?'r':'')+'">'+semana.length+'</div></div>'+
+      '<div class="mbox"><div class="mbox-l">Sem consulta 60+ dias</div><div class="mbox-v '+(sem60.length?'r':'')+'">'+sem60.length+'</div></div>'+
+      '<div class="mbox"><div class="mbox-l">Cons. no limite</div><div class="mbox-v '+(limite.length?'r':'')+'">'+limite.length+'</div></div>'+
+      '<div class="mbox"><div class="mbox-l">Novos este mês</div><div class="mbox-v b">'+novos.length+'</div></div>'+
+    '</div>'+
+    (semana.length?'<div style="background:#fff3d4;border:1px solid #f0c070;border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:#b8600a"><b>⚠️ Esta semana:</b> '+semana.map(function(p){return p.name}).join(', ')+'</div>':'')+
+    (sem60.length?'<div style="background:#ffd4d4;border:1px solid #f0a0a0;border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:#a00"><b>🔴 Sem consulta:</b> '+sem60.map(function(p){return p.name}).join(', ')+'</div>':'')+
+    '</div>';
+}
+
+function abrirNotifs(){
+  var el=document.getElementById('notifs-lista');
+  el.innerHTML=notifItens.length?notifItens.map(function(n){return'<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--abr)"><span style="font-size:18px">'+n.ico+'</span><div style="font-size:13px;color:var(--at)">'+n.txt+'</div></div>'}).join(''):'<div class="empty">Tudo em dia! ✅</div>';
+  abrirOv('ov-notifs');
+}
+
+// =============================================
+// CALENDAR
+// =============================================
+function calAnterior(){calMes--;if(calMes<0){calMes=11;calAno--}renderCal()}
+function calProximo(){calMes++;if(calMes>11){calMes=0;calAno++}renderCal()}
+function renderCal(){
+  document.getElementById('cal-titulo').textContent=MESES[calMes]+' '+calAno;
+  var agora=hj(),fd=new Date(calAno,calMes,1).getDay(),dim=new Date(calAno,calMes+1,0).getDate(),dp=new Date(calAno,calMes,0).getDate();
+  var mapa={};
+  pacs.forEach(function(p){if(!p.endDate)return;var ed=new Date(p.endDate+'T12:00:00');if(ed.getFullYear()===calAno&&ed.getMonth()===calMes){var d=ed.getDate();if(!mapa[d])mapa[d]=[];mapa[d].push(p)}});
+  var h='';
+  for(var i=fd-1;i>=0;i--)h+='<div class="cdy ot">'+(dp-i)+'</div>';
+  for(var d=1;d<=dim;d++){
+    var td=new Date(calAno,calMes,d);td.setHours(0,0,0,0);
+    var isTd=td.getTime()===agora.getTime(),ps=mapa[d];
+    var cls='cdy';if(isTd)cls+=' td';
+    if(ps){cls+=' ck';var dd=dleft(new Date(calAno,calMes,d).toISOString().split('T')[0]);cls+=dd<0?' ce':dd<=30?' cwa':' cok'}
+    h+='<div class="'+cls+'" '+(ps?'onclick="abrirDiaCal('+d+')"':'')+'>'+d+(ps?'<div class="cdot"></div>':'')+'</div>';
+  }
+  var rem=(fd+dim)%7;if(rem)for(var x=1;x<=7-rem;x++)h+='<div class="cdy ot">'+x+'</div>';
+  document.getElementById('cal-dias').innerHTML=h;
+  var mp=pacs.filter(function(p){if(!p.endDate)return false;var ed=new Date(p.endDate+'T12:00:00');return ed.getFullYear()===calAno&&ed.getMonth()===calMes}).sort(function(a,b){return new Date(a.endDate)-new Date(b.endDate)});
+  document.getElementById('cal-lista').innerHTML=mp.length?'<div class="fc"><h3>'+mp.length+' contrato'+(mp.length!==1?'s':'')+' em '+MESES[calMes]+'</h3>'+mp.map(function(p){var dd=dleft(p.endDate);return'<div class="mlr"><div class="av sm">'+ini(p.name)+'</div><div style="flex:1"><div style="font-size:13px;font-weight:600">'+p.name+'</div><div style="font-size:11px;color:var(--ag)">'+fdt(p.endDate)+' • '+pnm(p.plan)+'</div></div><span class="bx '+(dd<0?'rd':dd<=30?'am':'gn')+'">'+(dd<0?'Enc.':dd+'d')+'</span></div>'}).join('')+'</div>':'<div class="empty">Nenhum contrato neste mês.</div>';
+}
+function abrirDiaCal(dia){
+  var ps=pacs.filter(function(p){if(!p.endDate)return false;var ed=new Date(p.endDate+'T12:00:00');return ed.getFullYear()===calAno&&ed.getMonth()===calMes&&ed.getDate()===dia});
+  if(!ps.length)return;
+  document.getElementById('ov-cal-t').textContent=dia+' de '+MESES[calMes];
+  document.getElementById('ov-cal-s').textContent=ps.length+' contrato'+(ps.length!==1?'s':'')+' encerrando';
+  document.getElementById('ov-cal-l').innerHTML=ps.map(function(p){return'<div class="mlr"><div class="av">'+ini(p.name)+'</div><div style="flex:1"><div style="font-size:14px;font-weight:600">'+p.name+'</div><div style="font-size:12px;color:var(--ag)">'+(p.city||'')+' • '+pnm(p.plan)+'</div><div style="font-size:12px;color:var(--ag)">'+p.phone+'</div></div><div style="text-align:right"><span class="bx '+pcl(p.plan)+'">'+pnm(p.plan)+'</span><div style="font-size:11px;color:#34c759;font-weight:700;margin-top:3px">'+R(p.value)+'</div></div></div>'}).join('');
+  abrirOv('ov-cal-dia');
+}
+
+// =============================================
+// FINANCE
+// =============================================
+function setFinPer(p,el){finPer=p;document.querySelectorAll('.ft').forEach(function(b){b.classList.remove('on')});el.classList.add('on');renderFin()}
+function renderFin(){
+  var now=new Date();
+  var fl=pacs;
+  if(finPer==='mes')fl=pacs.filter(function(p){var d=new Date(p.startDate+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+  if(finPer==='ano')fl=pacs.filter(function(p){return new Date(p.startDate+'T12:00:00').getFullYear()===now.getFullYear()});
+  var tot=fl.reduce(function(s,p){return s+(p.value||0)},0),ren=0;
+  pacs.forEach(function(p){(p.history||[]).filter(function(h){return h.type==='renovacao'}).forEach(function(r){var d=new Date(r.date);if(finPer==='mes'&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear())ren+=(r.value||0);else if(finPer==='ano'&&d.getFullYear()===now.getFullYear())ren+=(r.value||0);else if(finPer==='total')ren+=(r.value||0)})});
+  var gr=tot+ren;
+  var bp={};Object.keys(PL).forEach(function(k){bp[k]={c:0,v:0}});
+  fl.forEach(function(p){if(bp[p.plan]){bp[p.plan].c++;bp[p.plan].v+=(p.value||0)}});
+  var m12=[];
+  for(var i=11;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1),m=d.getMonth(),a=d.getFullYear();var mp=pacs.filter(function(p){var s=new Date(p.startDate+'T12:00:00');return s.getMonth()===m&&s.getFullYear()===a});m12.push({v:mp.reduce(function(s,p){return s+(p.value||0)},0),c:mp.length,l:MESES[m].substring(0,3)+'/'+String(a).slice(2)})}
+  document.getElementById('fin-cont').innerHTML=
+    '<div class="mgrid"><div class="mbox"><div class="mbox-l">Faturamento</div><div class="mbox-v g" style="font-size:16px">'+R(gr)+'</div></div><div class="mbox"><div class="mbox-l">Contratos</div><div class="mbox-v b">'+fl.length+'</div></div><div class="mbox"><div class="mbox-l">Renovações</div><div class="mbox-v p" style="font-size:15px">'+R(ren)+'</div></div><div class="mbox"><div class="mbox-l">Ticket médio</div><div class="mbox-v" style="font-size:15px">'+(fl.length?R(tot/fl.length):'R$0')+'</div></div></div>'+
+    '<div class="cc"><h3>Faturamento (12 meses)</h3><div class="cw"><canvas id="cf"></canvas></div></div>'+
+    '<div class="cc"><h3>Novos cadastros</h3><div class="cw"><canvas id="cn"></canvas></div></div>'+
+    '<div class="cc"><h3>Receita por plano</h3><div class="cw"><canvas id="cp"></canvas></div></div>'+
+    '<div class="fc"><h3>Por plano</h3>'+Object.keys(PL).map(function(k){var pct=gr>0?Math.round(bp[k].v/gr*100):0;var cor=k==='intensivo'?'#a78bfa':k==='completo'?'#60a5fa':k==='avulso'?'#94a3b8':'#86efac';return'<div class="frow"><div><div style="font-size:13px;color:var(--ag)">'+pnm(k)+'</div><div class="pgbar"><div class="pgfill" style="width:'+pct+'%;background:'+cor+'"></div></div></div><div style="text-align:right"><div style="font-size:13px;font-weight:700">'+R(bp[k].v)+'</div><div style="font-size:11px;color:var(--ag)">'+bp[k].c+' • '+pct+'%</div></div></div>'}).join('')+'</div>';
+  setTimeout(function(){
+    var labs=m12.map(function(x){return x.l}),vals=m12.map(function(x){return x.v}),cnts=m12.map(function(x){return x.c});
+    if(chF)chF.destroy();chF=new Chart(document.getElementById('cf'),{type:'bar',data:{labels:labs,datasets:[{data:vals,backgroundColor:'#60a5fa',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return'R$'+Number(v).toLocaleString('pt-BR')}}}}}});
+    if(chN)chN.destroy();chN=new Chart(document.getElementById('cn'),{type:'line',data:{labels:labs,datasets:[{data:cnts,borderColor:'#34c759',backgroundColor:'rgba(52,199,89,.15)',fill:true,tension:.3,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+    if(chP)chP.destroy();
+    var pkeys=Object.keys(PL);
+    var cores={'intensivo':'#a78bfa','completo':'#60a5fa','basico':'#86efac','avulso':'#94a3b8'};
+    chP=new Chart(document.getElementById('cp'),{type:'doughnut',data:{labels:pkeys.map(pnm),datasets:[{data:pkeys.map(function(k){return bp[k].v}),backgroundColor:pkeys.map(function(k){return cores[k]||'#ccc'}),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+  },80);
+}
+
+// =============================================
+// HISTORY
+// =============================================
+function bHist(){
+  var q=(document.getElementById('busca-hist').value||'').trim().toLowerCase();
+  document.getElementById('hist-det').innerHTML='';
+  var r=q?pacs.filter(function(p){return p.name.toLowerCase().includes(q)}):pacs.slice();
+  r.sort(function(a,b){return a.name.localeCompare(b.name,'pt-BR')});
+  document.getElementById('hist-res').innerHTML=r.length?r.map(function(p){return'<div class="card" style="cursor:pointer" onclick="verHistorico(\''+p.id+'\')"><div class="ctop"><div class="av">'+ini(p.name)+'</div><div><div class="cname">'+p.name+'</div><div class="csub">'+(p.city||'')+' • '+pnm(p.plan)+'</div></div><div class="cbadges"><span class="bx '+pcl(p.plan)+'">'+pnm(p.plan)+'</span></div></div></div>'}).join(''):'<div class="empty">Nenhum encontrado.</div>';
+}
+function verHistorico(id){
+  var p=pacs.find(function(x){return x.id===id});if(!p)return;
+  var hist=(p.history||[]);
+  var hfilt=hist.filter(function(x){return x.type==='consulta'||x.type==='renovacao'||x.type==='change'}).reverse();
+  document.getElementById('hist-det').innerHTML='<div class="fc"><h3>'+p.name+'</h3>'+
+    '<div style="margin-bottom:10px;font-size:13px;color:var(--ag)">'+(p.consults||0)+' consultas • '+(p.renewals||0)+' renovações • '+R(p.value)+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;background:var(--ab);border-radius:10px;padding:10px">'+
+      '<div><div style="font-size:10px;color:var(--ag);text-transform:uppercase;margin-bottom:3px">1ª Consulta</div><div style="font-size:13px;font-weight:600;color:var(--at)">'+(p.primeiraConsulta?fdt(p.primeiraConsulta):'<span style="color:var(--ag)">—</span>')+'</div></div>'+
+      '<div><div style="font-size:10px;color:var(--ag);text-transform:uppercase;margin-bottom:3px">Retorno</div><div style="font-size:13px;font-weight:600;color:var(--at)">'+(p.retorno?fdt(p.retorno):'<span style="color:var(--ag)">—</span>')+'</div></div>'+
+    '</div>'+
+    (hfilt.length?hfilt.map(function(x){
+      var ridx=hist.indexOf(x);
+      var ico=x.tipoConsulta==='Primeira Consulta'?'🟢':x.tipoConsulta==='Retorno'?'🔵':'🟡';
+      var tag=x.type==='consulta'?'<span class="htag">'+ico+' '+(x.tipoConsulta||'Acompanhamento')+'</span>':'';
+      var dr=x.appointmentDate?'<span class="htag" style="background:#e3f2fd;color:#1565c0">📅 '+fdt(x.appointmentDate)+'</span>':'';
+      var ob=x.obs?'<div style="font-size:11px;color:var(--ag);margin-top:2px;font-style:italic">📝 '+x.obs+'</div>':'';
+      var edbtn=x.type==='consulta'?'<button onclick="editarConsulta(\''+id+'\','+ridx+')" style="background:none;border:none;font-size:12px;color:var(--bl);cursor:pointer;margin-left:4px">✏️</button>':'';
+      var notaAdmin=x.noteAdmin||x.note;
+      return'<div class="hr"><div class="hd '+(x.type==='renovacao'?'g':x.type==='change'?'a':'')+'"></div><div style="flex:1"><div style="font-size:13px;font-weight:600">'+notaAdmin+edbtn+'</div><div>'+tag+dr+'</div>'+ob+'<div style="font-size:11px;color:var(--ag);margin-top:2px">'+new Date(x.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</div></div></div>';
+    }).join(''):'<div class="empty">Sem histórico.</div>')+
+    '</div>';
+}
+
+// =============================================
+// EDIT CADASTRO
+// =============================================
+function bCad(){
+  var q=(document.getElementById('busca-cad').value||'').trim().toLowerCase();
+  document.getElementById('cad-det').innerHTML='';
+  var r=q?pacs.filter(function(p){return p.name.toLowerCase().includes(q)}):pacs.slice();
+  r.sort(function(a,b){return a.name.localeCompare(b.name,'pt-BR')});
+  document.getElementById('cad-res').innerHTML=r.length?r.map(function(p){return'<div class="card" style="cursor:pointer" onclick="abrirEd(\''+p.id+'\')"><div class="ctop"><div class="av">'+ini(p.name)+'</div><div><div class="cname">'+p.name+'</div><div class="csub">'+(p.city||'')+' • '+pnm(p.plan)+' • '+R(p.value)+'</div></div><div class="cbadges"><span class="bx '+pcl(p.plan)+'">'+pnm(p.plan)+'</span></div></div></div>'}).join(''):'<div class="empty">Nenhum encontrado.</div>';
+}
+function abrirEd(id){
+  var p=pacs.find(function(x){return x.id===id});if(!p)return;
+  planoSel.ed=p.plan;
+  document.getElementById('cad-res').innerHTML='';document.getElementById('busca-cad').value='';
+  document.getElementById('cad-det').innerHTML=
+    '<div class="epr"><div class="eav">'+ini(p.name)+'</div><div><div style="font-size:17px;font-weight:700">'+p.name+'</div><div style="font-size:12px;color:var(--ag)">#'+pad(p.num||0)+' • '+(p.city||'')+'</div></div></div>'+
+    '<div class="fc"><h3>Dados pessoais</h3>'+
+      '<div class="ff"><label>Nome</label><input id="en" value="'+(p.name||'')+'"></div>'+
+      '<div class="ff"><label>Cidade</label><input id="eci" value="'+(p.city||'')+'"></div>'+
+      '<div class="ff"><label>Nascimento</label><input id="eb" type="date" value="'+(p.birth||'')+'"></div>'+
+      '<div class="ff"><label>CPF</label><input id="ecpf" value="'+(p.cpf||'')+'"></div>'+
+      '<div class="ff"><label>E-mail</label><input id="eem" type="email" value="'+(p.email||'')+'"></div>'+
+      '<div class="ff"><label>Telefone</label><input id="etel" value="'+(p.phone||'')+'"></div>'+
+    '</div>'+
+    '<div class="fc"><h3>Programa</h3>'+
+      '<p style="font-size:12px;color:var(--ag);margin-bottom:12px">Atual: <b>'+pnm(p.plan)+'</b></p>'+
+      '<div class="plancards" id="planos-ed"></div>'+
+      '<div class="ff" style="margin-top:12px"><label>Valor (R$)</label><input id="eval" type="number" value="'+(p.value||'')+'"></div>'+
+      '<div class="ff"><label>Data de início</label><input id="eini" type="date" value="'+(p.startDate||'')+'" oninput="recalcFim(\'eini\',\'efim\',\'ed\')"></div>'+
+      '<div class="ff"><label>Data de término</label><input id="efim" readonly value="'+(p.plan==='avulso'?'Sem prazo':fdt(p.endDate))+'"></div>'+
+    '</div>'+
+    '<button class="bp" onclick="salvarEd(\''+id+'\')">Salvar alterações</button>'+
+    '<button class="bs" onclick="document.getElementById(\'cad-det\').innerHTML=\'\'">Cancelar</button>'+
+    '<div class="fmsg" id="edmsg"></div>';
+  mkPlanCards('planos-ed','ed');
+}
+function salvarEd(id){
+  var p=pacs.find(function(x){return x.id===id});if(!p)return;
+  var nome=(document.getElementById('en').value||'').trim();
+  var cidade=(document.getElementById('eci').value||'').trim();
+  var nasc=document.getElementById('eb').value||'';
+  var cpf=(document.getElementById('ecpf').value||'').trim();
+  var email=(document.getElementById('eem').value||'').trim();
+  var tel=(document.getElementById('etel').value||'').trim();
+  var plano=planoSel.ed||p.plan;
+  var valor=parseFloat(document.getElementById('eval').value)||p.value||0;
+  var inicio=document.getElementById('eini').value||'';
+  var msg=document.getElementById('edmsg');
+  if(!nome){msg.style.color='#ff3b30';msg.textContent='Nome é obrigatório.';return}
+  var h=(p.history||[]).slice();
+  if(plano!==p.plan)h.push({type:'change',date:new Date().toISOString(),note:'Plano: '+pnm(p.plan)+' → '+pnm(plano),plan:plano});
+  var upd={name:nome,city:cidade,birth:nasc,cpf:ncpf(cpf),email:email,phone:tel,plan:plano,value:plano==='avulso'?0:valor,startDate:inicio||p.startDate,endDate:plano==='avulso'?'':(inicio?edt(inicio,plano):p.endDate),history:h};
+  fbSave(id,upd).then(function(){toast('Alterações salvas!');document.getElementById('cad-det').innerHTML=''}).catch(function(){msg.style.color='#ff3b30';msg.textContent='Erro.'});
+}
+
+// =============================================
+// METRICS & LIST
+// =============================================
+function renderMetricas(){
+  var t=pacs.length,a=pacs.filter(function(p){return pst(p)!=='ativo'||cst(p)!=='ok'}).length;
+  document.getElementById('metricas').innerHTML='<div class="mbox"><div class="mbox-l">Total de pacientes</div><div class="mbox-v">'+t+'</div></div><div class="mbox"><div class="mbox-l">Com alertas</div><div class="mbox-v r">'+a+'</div></div>';
+}
+function renderLista(){
+  var q=(document.getElementById('busca')||{value:''}).value.trim().toLowerCase();
+  var el=document.getElementById('lista-pacs');
+  var fl=pacs.filter(function(p){
+    var ps=pst(p),cs=cst(p);
+    if(filtro==='encerrando'&&ps!=='encerrando')return false;
+    if(filtro==='encerrado'&&ps!=='encerrado')return false;
+    if(filtro==='excedido'&&cs!=='excedido')return false;
+    if(filtro==='novos'){
+      if(!p.startDate)return false;
+      var agr=new Date(),sd=new Date(p.startDate+'T12:00:00');
+      var cM=agr.getMonth(),cY=agr.getFullYear();
+      var pM=cM===0?11:cM-1,pY=cM===0?cY-1:cY;
+      var ehCurMes=(sd.getMonth()===cM&&sd.getFullYear()===cY);
+      var ehMesAnt=(sd.getMonth()===pM&&sd.getFullYear()===pY);
+      if(!ehCurMes&&!ehMesAnt)return false;
+    }
+    if(q&&!p.name.toLowerCase().includes(q))return false;
+    return true;
+  });
+  fl.sort(function(a,b){return a.name.localeCompare(b.name,'pt-BR')});
+  if(!fl.length){el.innerHTML='<div class="empty">Nenhum paciente.</div>';return}
+  var gr={};fl.forEach(function(p){var l=p.name[0].toUpperCase();if(!gr[l])gr[l]=[];gr[l].push(p)});
+  el.innerHTML=Object.keys(gr).sort().map(function(l){return'<div><div class="alab">'+l+'</div>'+gr[l].map(renderCard).join('')+'</div>'}).join('');
+}
+
+function renderCard(p){
+  var ps=pst(p),cs=cst(p),av=p.plan==='avulso';
+  var mx=PL[p.plan]?PL[p.plan].c:null;
+  var dl=p.endDate?dleft(p.endDate):null;
+  var c=p.consults||0;
+  var cls='card';if(cs==='excedido')cls+=' x';else if(ps==='encerrado')cls+=' d';else if(ps==='encerrando')cls+=' w';
+  var psb=av||ps==='ativo'?'<span class="bx gn">Ativo</span>':ps==='encerrando'?'<span class="bx am">Encerrando</span>':'<span class="bx rd">Encerrado</span>';
+  var plb='<span class="bx '+pcl(p.plan)+'">'+pnm(p.plan)+'</span>';
+  var dts='';
+  if(mx!==null&&mx!==undefined){var tot=Math.max(mx,c);for(var i=0;i<tot;i++)dts+=i<c&&i<mx?'<div class="dot u"></div>':i>=mx&&i<c?'<div class="dot o"></div>':'<div class="dot"></div>'}
+  var alr='';
+  if(!av){
+    if(cs==='excedido')alr+='<div class="alr co">'+c+'/'+mx+' — extra</div>';
+    else if(cs==='limite')alr+='<div class="alr am">Todas utilizadas</div>';
+    if(ps==='encerrando'&&dl>=0)alr+='<div class="alr am">Encerra em '+dl+'d</div>';
+    if(ps==='encerrado')alr+='<div class="alr rd">Encerrado há '+Math.abs(dl)+'d</div>';
+  }
+  var rt=p.renewals>0?'<span class="rtag">🔄'+p.renewals+'x</span>':'';
+  var id=age(p.birth);
+  return'<div class="'+cls+'">'+
+    '<div class="ctop"><div class="av">'+ini(p.name)+'</div>'+
+    '<div style="flex:1"><div class="cname">'+p.name+' '+rt+'</div>'+
+    '<div class="csub">'+(p.city||'')+(id?' • '+id+'a':'')+'</div>'+
+    '<div class="csub">'+(p.phone||'')+(av?'':' • <b>'+R(p.value)+'</b>')+'</div></div>'+
+    '<div class="cbadges">'+plb+psb+'</div></div>'+
+    '<div class="cinfo">'+
+      '<div><div class="cil">Nº</div><div class="civ">#'+pad(p.num||0)+'</div></div>'+
+      '<div><div class="cil">Início</div><div class="civ">'+fdt(p.startDate)+'</div></div>'+
+      '<div><div class="cil">Término</div><div class="civ">'+(av?'Sem prazo':fdt(p.endDate))+'</div></div>'+
+    '</div>'+
+    '<div style="border-top:1px solid var(--abr);padding-top:10px">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+        '<div onclick="abrirDataCampo(\''+p.id+'\',\'primeiraConsulta\')" style="border:1px solid var(--abr);border-radius:10px;padding:8px 10px;cursor:pointer;background:var(--ab)"><div style="font-size:10px;color:var(--ag);font-weight:600;text-transform:uppercase;margin-bottom:2px">1ª Consulta</div><div style="font-size:13px;font-weight:600;color:var(--at)">'+(p.primeiraConsulta?fdt(p.primeiraConsulta):'<span style="color:var(--ag);font-weight:400">Toque para definir</span>')+'</div></div>'+
+        '<div onclick="abrirDataCampo(\''+p.id+'\',\'retorno\')" style="border:1px solid var(--abr);border-radius:10px;padding:8px 10px;cursor:pointer;background:var(--ab)"><div style="font-size:10px;color:var(--ag);font-weight:600;text-transform:uppercase;margin-bottom:2px">Retorno</div><div style="font-size:13px;font-weight:600;color:var(--at)">'+(p.retorno?fdt(p.retorno):'<span style="color:var(--ag);font-weight:400">Toque para definir</span>')+'</div></div>'+
+      '</div>'+
+      (av?'<div style="font-size:11px;color:var(--ag);font-weight:600;margin-bottom:8px">Avulso • '+c+' consulta'+(c!==1?'s':'')+' realizadas</div>':mx!==null&&mx!==undefined?'<div class="dots" style="margin-bottom:8px">'+dts+'<span style="font-size:11px;color:var(--ag);margin-left:4px">'+c+'/'+mx+'</span></div>':'<div style="font-size:11px;color:var(--bl);font-weight:600;margin-bottom:8px">Ilimitado • '+c+' realizadas</div>')+
+      '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+        '<button class="bsm bgr" onclick="desfazerConsulta(\''+p.id+'\')" '+(c<=0?'disabled style="opacity:.35"':'')+'>− Consulta</button>'+
+        '<span style="font-size:13px;font-weight:700;color:var(--at);min-width:28px;text-align:center">'+c+(mx?'/'+mx:'')+'</span>'+
+        '<button class="bsm bbl" onclick="abrirConsulta(\''+p.id+'\')">+ Consulta</button>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--abr);flex-wrap:wrap">'+
+      (av?'':'<button class="bsm bgn" onclick="abrirRenovacao(\''+p.id+'\')">🔄 Renovar</button>')+
+      '<button class="bsm bblu" onclick="exportarPDF(\''+p.id+'\')">📄 Relatório</button>'+
+      (av?'':'<button class="bsm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7" onclick="abrirWAFarm(\''+p.id+'\')">💊 Farmacêutica</button>')+
+      '<button class="bsm brd" onclick="removerPaciente(\''+p.id+'\')">Remover</button>'+
+    '</div>'+
+    alr+'</div>';
+}
+
+// =============================================
+// MONTHLY NOTIFICATION
+// =============================================
+function checkNovMensal(){
+  var k='imo-n-'+new Date().getFullYear()+'-'+(new Date().getMonth()+1);
+  if(localStorage.getItem(k))return;
+  var now=new Date();
+  var en=pacs.filter(function(p){if(!p.endDate)return false;var ed=new Date(p.endDate+'T12:00:00');return ed.getMonth()===now.getMonth()&&ed.getFullYear()===now.getFullYear()});
+  if(!en.length)return;
+  document.getElementById('nov-mes').textContent=MESES[now.getMonth()]+' de '+now.getFullYear();
+  document.getElementById('nov-lista').innerHTML=en.map(function(p){return'<div class="mlr"><div class="av sm">'+ini(p.name)+'</div><div><div style="font-size:14px;font-weight:600">'+p.name+'</div><div style="font-size:12px;color:var(--ag)">'+fdt(p.endDate)+' • '+pnm(p.plan)+'</div></div></div>'}).join('');
+  document.getElementById('nov-mensal').classList.add('show');
+  localStorage.setItem(k,'1');
+}
+function fecharNovMensal(){document.getElementById('nov-mensal').classList.remove('show')}
+
+// =============================================
+// INIT
+// =============================================
+window.onload = function(){
+  mostrarTela('login');
+  document.getElementById('fini').value=new Date().toISOString().split('T')[0];
+  mkPlanCards('planos-novo','novo');
+  mkPlanCards('planos-ren','ren');
+  if(!fbOk){
+    document.getElementById('demo-box').innerHTML='<b>Modo Demo ativo</b><br>Paciente: Maria / CPF: 529<br>Admin: admin / imo2026';
+  }
+};
+</script>
+</body>
+</html>
